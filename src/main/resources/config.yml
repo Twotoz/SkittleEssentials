@@ -35,7 +35,7 @@ new-player-filter:
   #   - "warp shop" = blocks ONLY /warp shop, allows /warp pvp etc.
   blocked-commands:
     - "warp shop"      # Block /warp shop specifically
-    - "ugaga"             # Block all /tp commands
+    - "ugaga"
 
     # Add more commands as needed
 
@@ -45,7 +45,7 @@ new-player-filter:
 # Private staff communication - invisible to Discord and players
 # Staff can type "!" before their message to use staff chat
 staffchat:
-  prefix: "&7[&c&lSTAFF&7]"                      # Prefix shown before staff messages
+  prefix: "&7[&cSTAFF&7]"                      # Prefix shown before staff messages
   format: "&f{player} &8: &7{message}"           # Format: {player} = name, {message} = text
 
 
