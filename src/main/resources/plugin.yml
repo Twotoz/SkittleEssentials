@@ -1,0 +1,122 @@
+name: SkittleEssentials
+version: 1.2.0
+main: twotoz.skittleEssentials.SkittleEssentials
+api-version: 1.20
+depend: [ProtocolLib, Vault, LuckPerms, Essentials]
+author: Twotoz
+description: A combination of essential server features
+
+commands:
+  sizer:
+    description: Change the size of players
+    usage: /<command> <scale> or /<command> <player> <scale>
+    permission: skittle.sizer.use
+    permission-message: §cYou don't have permission to use this command!
+
+  buildmode:
+    description: Toggle build mode on or off
+    usage: /<command> <on|off>
+    permission: skittle.buildmode
+    permission-message: §cYou don't have permission to use this command!
+
+  jailban:
+    description: Send a player to jail with a bail amount
+    usage: /<command> <player> <bail_amount> [reason]
+    permission: skittle.jailban
+    permission-message: §cYou don't have permission to use this command!
+
+  unjailban:
+    description: Release a player from jail
+    usage: /<command> <player>
+    permission: skittle.jailban
+    permission-message: §cYou don't have permission to use this command!
+
+  jaillist:
+    description: View all jailed players and their bail progress
+    usage: /<command>
+    permission: skittle.jailban
+    permission-message: §cYou don't have permission to use this command!
+
+  jailbal:
+    description: Check your jail balance and bail amount
+    usage: /<command>
+    permission-message: §cYou are not in jail!
+
+  bail:
+    description: Bail yourself out of jail or check your balance
+    usage: /<command> [confirm]
+    permission-message: §cYou are not in jail!
+
+  startjailvote:
+    description: Start a community vote to jail a player
+    usage: /<command> [confirm]
+    permission: skittle.jailvote.start
+    permission-message: §cYou don't have permission to start a jail vote!
+
+  jailvote:
+    description: Vote for who should be jailed
+    usage: /<command> <player>
+    permission-message: §cThere is no active jail vote!
+
+  staffchat:
+    description: Toggle staff chat mode
+    usage: /<command>
+    aliases: [sct, sc]
+    permission: skittle.staffchat
+    permission-message: §cYou don't have permission to use staff chat!
+
+  skittle:
+    description: Reload the SkittleEssentials configuration
+    usage: /<command> reload
+    permission: skittle.admin
+    permission-message: §cYou don't have permission to use this command!
+
+permissions:
+  skittle.sizer.use:
+    description: Allow changing your own size
+    default: true
+  skittle.sizer.other:
+    description: Allow changing other players' size
+    default: op
+  skittle.sizer.admin:
+    description: Allow using full scale range (0.01 to 25.0)
+    default: op
+  skittle.buildmode:
+    description: Allow using build mode
+    default: op
+  skittle.jailban:
+    description: Allow jailbanning players
+    default: op
+  skittle.jailban.bypass:
+    description: Bypass jail restrictions
+    default: op
+  skittle.jailban.notify:
+    description: Receive notifications and see jail chat
+    default: op
+  skittle.jailvote.start:
+    description: Start a jail vote (costs money)
+    default: true
+  skittle.staffchat:
+    description: Use staff chat with ! prefix and see staff messages
+    default: op
+  skittle.newplayerfilter.bypass:
+    description: Bypass new player filter restrictions (chat filtering and command blocking)
+    default: op
+  skittle.admin:
+    description: Allow reloading the plugin
+    default: op
+  skittle.*:
+    description: Grants access to all SkittleEssentials features
+    default: op
+    children:
+      skittle.sizer.use: true
+      skittle.sizer.other: true
+      skittle.sizer.admin: true
+      skittle.buildmode: true
+      skittle.jailban: true
+      skittle.jailban.bypass: true
+      skittle.jailban.notify: true
+      skittle.jailvote.start: true
+      skittle.staffchat: true
+      skittle.newplayerfilter.bypass: true
+      skittle.admin: true

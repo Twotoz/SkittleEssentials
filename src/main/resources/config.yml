@@ -1,0 +1,228 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║              SkittleEssentials Configuration                 ║
+# ║                    Version 1.2.0                             ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                    FAKE PLAYERS SPOOFER                     │
+# └─────────────────────────────────────────────────────────────┘
+# Makes your server look more populated in the server list
+fake-players:
+  enabled: false               # Enable/disable fake player feature
+  count: 6                      # Number of fake players to add
+  names:                        # Names that will appear when hovering over player count
+    - "Skeppy"
+    - "Gr1ppy"
+    - "DoniBobes"
+    - "Coz24"
+    - "Twozy"
+    - "Fex1"
+
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                 NEW PLAYER FILTER SYSTEM                    │
+# └─────────────────────────────────────────────────────────────┘
+# Block commands for players under a certain playtime
+new-player-filter:
+  enabled: true                           # Enable/disable new player filtering
+  playtime-threshold-hours: 3.0           # Minimum playtime hours before restrictions are lifted
+
+  # Commands that new players cannot use
+  # New players will see "No permission." without knowing it's temporary
+  # Supports both "command" (blocks all) and "command args" (blocks specific)
+  # Examples:
+  #   - "warp" = blocks ALL /warp commands
+  #   - "warp shop" = blocks ONLY /warp shop, allows /warp pvp etc.
+  blocked-commands:
+    - "warp shop"      # Block /warp shop specifically
+    - "ugaga"             # Block all /tp commands
+
+    # Add more commands as needed
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                    STAFF CHAT SYSTEM                        │
+# └─────────────────────────────────────────────────────────────┘
+# Private staff communication - invisible to Discord and players
+# Staff can type "!" before their message to use staff chat
+staffchat:
+  prefix: "&7[&c&lSTAFF&7]"                      # Prefix shown before staff messages
+  format: "&f{player} &8: &7{message}"           # Format: {player} = name, {message} = text
+
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                    BUILDMODE SYSTEM                         │
+# └─────────────────────────────────────────────────────────────┘
+# Safe build mode for staff with restricted permissions
+buildmode:
+  # Commands that cannot be used in buildmode
+  blocked-commands:
+    - "echest"
+    - "ec"
+    - "enderchest"
+    - "pv"
+    - "playervault"
+    - "perkvault"
+    - "trade"
+    - "kit"
+    - "invsee"
+    - "openinv"
+    - "ah"
+    - "auctionhouse"
+
+  # Blocks that cannot be placed or broken in buildmode
+  # Prevents duplication and obtaining valuable items
+  blocked-blocks:
+    # Valuable blocks
+    - "NETHERITE_BLOCK"
+    - "DIAMOND_BLOCK"
+    - "EMERALD_BLOCK"
+    - "GOLD_BLOCK"
+    - "IRON_BLOCK"
+    - "BEACON"
+    - "BEDROCK"
+
+    # Spawners and technical blocks
+    - "SPAWNER"
+    - "END_PORTAL_FRAME"
+    - "COMMAND_BLOCK"
+    - "CHAIN_COMMAND_BLOCK"
+    - "REPEATING_COMMAND_BLOCK"
+    - "STRUCTURE_BLOCK"
+    - "JIGSAW"
+    - "BARRIER"
+    - "LIGHT"
+    - "STRUCTURE_VOID"
+
+    # Elytra and valuable items as blocks
+    - "ELYTRA"
+    - "DRAGON_HEAD"
+    - "DRAGON_EGG"
+
+    # Shulker boxes (already blocked as containers, but listed for clarity)
+    - "SHULKER_BOX"
+    - "WHITE_SHULKER_BOX"
+    - "ORANGE_SHULKER_BOX"
+    - "MAGENTA_SHULKER_BOX"
+    - "LIGHT_BLUE_SHULKER_BOX"
+    - "YELLOW_SHULKER_BOX"
+    - "LIME_SHULKER_BOX"
+    - "PINK_SHULKER_BOX"
+    - "GRAY_SHULKER_BOX"
+    - "LIGHT_GRAY_SHULKER_BOX"
+    - "CYAN_SHULKER_BOX"
+    - "PURPLE_SHULKER_BOX"
+    - "BLUE_SHULKER_BOX"
+    - "BROWN_SHULKER_BOX"
+    - "GREEN_SHULKER_BOX"
+    - "RED_SHULKER_BOX"
+    - "BLACK_SHULKER_BOX"
+
+    # TNT and dangerous blocks
+    - "TNT"
+    - "TNT_MINECART"
+
+    # Enchanted/rare items (add more as needed for your server)
+    # - "ENCHANTED_GOLDEN_APPLE"  # These are items, not blocks
+    # Add any custom server items/blocks here
+
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                    JAILBAN BAIL SYSTEM                      │
+# └─────────────────────────────────────────────────────────────┘
+# Prison system with bail mechanic - players can earn freedom by killing mobs
+# Each mob kill = $1 towards bail amount
+jailban:
+  # Region boundaries (corners of the jail area)
+  region:
+    pos1:
+      world: spawn
+      x: 212.0
+      y: 60.0
+      z: -111.0
+    pos2:
+      world: spawn
+      x: 158
+      y: 107
+      z: -61
+    spawn:              # Where jailed players spawn
+      world: spawn
+      x: 190
+      y: 67
+      z: -85
+      yaw: 0.0
+      pitch: 0.0
+
+  # Chat system - jailed players have separate chat
+  chat:
+    prefix: "&7[&cJail&7]"
+    format: "&f{player} &8: &7{message}"
+
+  # Restrictions for jailed players
+  block-interactions: true        # Block chest, furnace, etc. access
+
+  # Commands that jailed players CAN use
+  allowed-commands:
+    - "help"
+    - "rules"
+    - "msg"
+    - "r"
+    - "reply"
+    - "tell"
+    - "jailbal"         # Check their bail balance
+    - "bail"            # Bail themselves out
+
+  # Anti-spam for boundary messages
+  boundary-message-cooldown: 3  # Seconds between "you cannot leave" messages
+
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                    JAIL VOTE SYSTEM                         │
+# └─────────────────────────────────────────────────────────────┘
+# Community voting system to jail players democratically
+jailvote:
+  cost: 1000000.0              # Cost to start a jail vote (in economy money)
+  duration-seconds: 120        # How long the vote lasts (2 minutes = 120 seconds)
+  bail-amount: 10.0           # Bail amount for the voted player
+
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                 BALTOP REWARDS SYSTEM                       │
+# └─────────────────────────────────────────────────────────────┘
+# Automatically add the richest players to LuckPerms groups
+# Requires: Essentials, LuckPerms
+baltop-rewards:
+  enabled: true                           # Enable/disable baltop rewards
+  check-interval-minutes: 30              # How often to check baltop (in minutes)
+
+  # LuckPerms group for #1 richest player
+  rank-1-group: "baltop1"
+
+  # LuckPerms group for #2 richest player
+  rank-2-group: "baltop2"
+
+  # LuckPerms group for #3 richest player
+  rank-3-group: "baltop3"
+
+
+# ┌─────────────────────────────────────────────────────────────┐
+# │                    PLAYER SIZER SYSTEM                      │
+# └─────────────────────────────────────────────────────────────┘
+# Adjust player size with automatic attribute scaling
+sizer:
+  # Scale limits for non-OP players
+  default-min-scale: 0.7
+  default-max-scale: 1.2
+
+  # OP players can use any scale
+  op-min-scale: 0.01
+  op-max-scale: 25.0
+
+
+# ╔══════════════════════════════════════════════════════════════╗
+# ║                      COLOR CODES                             ║
+# ║  &0=Black  &1=Dark Blue    &2=Dark Green  &3=Dark Aqua       ║
+# ║  &4=Dark Red  &5=Purple    &6=Gold        &7=Gray            ║
+# ║  &8=Dark Gray &9=Blue      &a=Green       &b=Aqua            ║
+# ║  &c=Red    &d=Pink         &e=Yellow      &f=White           ║
+# ║  &l=Bold   &m=Strike       &n=Underline   &o=Italic          ║
+# ╚══════════════════════════════════════════════════════════════╝
