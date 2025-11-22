@@ -17,7 +17,7 @@ public class NewPlayerFilter {
     private boolean enabled;
     private double playtimeThresholdHours;
     private List<String> blockedCommands;
-    
+
     // Chat filter settings
     private boolean chatFilterEnabled;
     private String replacementString;
@@ -34,7 +34,7 @@ public class NewPlayerFilter {
         enabled = plugin.getConfig().getBoolean("new-player-filter.enabled", true);
         playtimeThresholdHours = plugin.getConfig().getDouble("new-player-filter.playtime-threshold-hours", 2.0);
         blockedCommands = plugin.getConfig().getStringList("new-player-filter.blocked-commands");
-        
+
         // Chat filter settings
         chatFilterEnabled = plugin.getConfig().getBoolean("new-player-filter.chat-filter.enabled", true);
         replacementString = plugin.getConfig().getString("new-player-filter.chat-filter.replacement", "***");
@@ -139,14 +139,14 @@ public class NewPlayerFilter {
     public List<String> getBlockedCommands() {
         return new ArrayList<>(blockedCommands);
     }
-    
+
     /**
      * Check if chat filter is enabled
      */
     public boolean isChatFilterEnabled() {
         return enabled && chatFilterEnabled;
     }
-    
+
     /**
      * Filter a chat message for blocked words
      * Returns the filtered message with blocked words replaced
@@ -155,61 +155,61 @@ public class NewPlayerFilter {
         if (!isChatFilterEnabled() || blockedWords.isEmpty()) {
             return message;
         }
-        
+
         // Don't filter for players with bypass permission
         if (player.hasPermission("skittle.newplayerfilter.bypass")) {
             return message;
         }
-        
+
         // Don't filter if player is not new
         if (!isNewPlayer(player)) {
             return message;
         }
-        
+
         return filterMessageContent(message);
     }
-    
+
     /**
      * Filter message content without player checks
-     * Used by packet listener which already checked if filtering is needed
+     * Used by chat listener which already checked if filtering is needed
      */
     public String filterMessageContent(String message) {
         if (blockedWords.isEmpty()) {
             return message;
         }
-        
+
         String filtered = message;
         boolean wasFiltered = false;
-        
+
         // Check each blocked word (case-insensitive)
         for (String blockedWord : blockedWords) {
             if (blockedWord.isEmpty()) continue;
-            
+
             // Use word boundaries to match whole words only
             // (?i) makes it case-insensitive
             String regex = "(?i)\\b" + java.util.regex.Pattern.quote(blockedWord) + "\\b";
-            
+
             if (filtered.matches(".*" + regex + ".*")) {
                 filtered = filtered.replaceAll(regex, replacementString);
                 wasFiltered = true;
             }
         }
-        
+
         // Log if message was filtered and logging is enabled
         if (wasFiltered && logFilteredMessages) {
             plugin.getLogger().info("[ChatFilter] Message filtered: " + message + " -> " + filtered);
         }
-        
+
         return filtered;
     }
-    
+
     /**
      * Get the replacement string for blocked words
      */
     public String getReplacementString() {
         return replacementString;
     }
-    
+
     /**
      * Get list of blocked words
      */
