@@ -27,19 +27,19 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            sender.sendMessage("§e§l    SkittleEssentials v1.2.0");
+            sender.sendMessage("§e§l    SkittleEssentials v1.3.0");
             sender.sendMessage("§7        Created by: §eTwotoz");
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             sender.sendMessage("");
             sender.sendMessage("§6Features:");
-            sender.sendMessage("§e▪ §7Player Sizer - Adjust player size §c[UPDATED]");
-            sender.sendMessage("§e▪ §7Buildmode - Safe building mode for staff §c[UPDATED]");
+            sender.sendMessage("§e▪ §7Player Sizer - Adjust player size");
+            sender.sendMessage("§e▪ §7Buildmode - Safe building mode for staff");
             sender.sendMessage("§e▪ §7Jailban - Prison system with bail mechanic");
             sender.sendMessage("§e▪ §7Jail Vote - Community voting system");
-            sender.sendMessage("§e▪ §7Staff Chat - Private staff communication §c[UPDATED]");
-            sender.sendMessage("§e▪ §7Baltop Rewards - Auto LuckPerms groups for rich players §c[UPDATED]");
+            sender.sendMessage("§e▪ §7Staff Chat - Private staff communication");
+            sender.sendMessage("§e▪ §7Baltop Rewards - Auto LuckPerms groups for rich players");
             sender.sendMessage("§e▪ §7Fake Players - Server list spoofing");
-            sender.sendMessage("§e▪ §7New Player Filter - Command blocking for new players §c[NEW]");
+            sender.sendMessage("§e▪ §7New Player Filter - Command & chat filtering §c[UPDATED]");
             sender.sendMessage("");
             sender.sendMessage("§6Quick Commands:");
             sender.sendMessage("§e/sizer §7- Change player sizes");
@@ -237,16 +237,23 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
                 case "newplayerfilter":
                 case "filter":
                 case "npf":
-                    sender.sendMessage("§6§l=== New Player Filter Help §c[NEW] ===");
-                    sender.sendMessage("§7Command blocking for new players");
+                    sender.sendMessage("§6§l=== New Player Filter Help §c[UPDATED] ===");
+                    sender.sendMessage("§7Command blocking & chat filtering for new players");
                     sender.sendMessage("");
                     sender.sendMessage("§7How it works:");
                     sender.sendMessage("§e▪ §7Blocks certain commands until playtime threshold met");
+                    sender.sendMessage("§e▪ §7Filters profanity in chat for new players §c[NEW]");
                     sender.sendMessage("§e▪ §7Shows 'No permission.' to new players");
                     sender.sendMessage("§e▪ §7Supports both base commands and specific args");
                     sender.sendMessage("§e▪ §7Example: 'warp' blocks all, 'warp shop' blocks specific");
                     sender.sendMessage("");
-                    sender.sendMessage("§7Default threshold: §e2.5 hours playtime");
+                    sender.sendMessage("§6Chat Filter Features §c[NEW]:");
+                    sender.sendMessage("§e▪ §7Whole-word matching (won't filter parts of words)");
+                    sender.sendMessage("§e▪ §7Case-insensitive filtering");
+                    sender.sendMessage("§e▪ §7Private messages (/msg) are NOT filtered");
+                    sender.sendMessage("§e▪ §7Configurable replacement string (default: ***)");
+                    sender.sendMessage("");
+                    sender.sendMessage("§7Default threshold: §e3.0 hours playtime");
                     sender.sendMessage("§7Message to new player: §cNo permission.");
                     sender.sendMessage("");
                     sender.sendMessage("§7Permissions:");
@@ -288,14 +295,15 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         sender.sendMessage("§e§l    SkittleEssentials Info");
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        sender.sendMessage("§7Version: §e1.1.0");
+        sender.sendMessage("§7Version: §e1.3.0");
         sender.sendMessage("§7Author: §eTwotoz");
-        sender.sendMessage("§7API: §ePaper 1.21");
+        sender.sendMessage("§7API: §ePaper 1.20+");
         sender.sendMessage("");
         sender.sendMessage("§7Dependencies:");
         sender.sendMessage("§e▪ §7Vault (Required)");
-        sender.sendMessage("§e▪ §7LuckPerms (Optional)");
-        sender.sendMessage("§e▪ §7Essentials (Optional)");
+        sender.sendMessage("§e▪ §7LuckPerms (Required)");
+        sender.sendMessage("§e▪ §7Essentials (Required)");
+        sender.sendMessage("§e▪ §7ProtocolLib (Required)");
         sender.sendMessage("");
         sender.sendMessage("§7Features Status:");
 
@@ -315,13 +323,18 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§a✓ §7Staff Chat");
         sender.sendMessage((baltopEnabled ? "§a✓" : "§c✗") + " §7Baltop Rewards");
         sender.sendMessage((filterEnabled ? "§a✓" : "§c✗") + " §7New Player Filter" +
-                (filterEnabled ? " §7(" + newPlayerFilter.getPlaytimeThresholdHours() + "h threshold)" : "") + " §c[NEW]");
+                (filterEnabled ? " §7(" + newPlayerFilter.getPlaytimeThresholdHours() + "h threshold)" : ""));
+        
+        if (filterEnabled && newPlayerFilter.isChatFilterEnabled()) {
+            sender.sendMessage("    §e↳ §7Chat Filter: §a✓ §7(" + newPlayerFilter.getBlockedWords().size() + " words)");
+        }
+        
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         return true;
     }
 
     private boolean handleVersion(CommandSender sender) {
-        sender.sendMessage("§eSkittleEssentials §7v§61.1.0");
+        sender.sendMessage("§eSkittleEssentials §7v§61.3.0");
         sender.sendMessage("§7Running on §e" + plugin.getServer().getName() + " " + plugin.getServer().getVersion());
         return true;
     }
