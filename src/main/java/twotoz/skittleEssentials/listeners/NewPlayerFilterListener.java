@@ -1,10 +1,12 @@
 package twotoz.skittleEssentials.listeners;
 
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import twotoz.skittleEssentials.SkittleEssentials;
 import twotoz.skittleEssentials.filters.NewPlayerFilter;
@@ -48,7 +50,7 @@ public class NewPlayerFilterListener implements Listener {
      * - Ervaren spelers zien het origineel
      */
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onPlayerChat(AsyncPlayerChatEvent event) {
+    public void onPlayerChat(AsyncChatEvent event) {
         if (!filter.isEnabled() || !filter.isChatFilterEnabled()) {
             return;
         }
@@ -57,20 +59,26 @@ public class NewPlayerFilterListener implements Listener {
         event.setCancelled(true);
 
         Player sender = event.getPlayer();
-        String originalMessage = event.getMessage();
-        String format = event.getFormat();  // Behoudt ranks, kleuren en formatting (inclusief aanpassingen van andere plugins zoals EssentialsX)
+        Component originalMessage = event.message();
 
         // Stuur naar elke recipient
-        for (Player recipient : event.getRecipients()) {
-            String messageToSend = originalMessage;
+        for (Audience audience : event.viewers()) {
+            if (!(audience instanceof Player recipient)) {
+                continue;
+            }
+
+            Component messageToSend = originalMessage;
 
             // Filter alleen voor nieuwe spelers (ontvangers met te weinig playtime), maar skip voor de sender zelf
-            if (filter.isNewPlayer(recipient) && recipient != sender) {
+            if (filter.isNewPlayer(recipient) && !recipient.equals(sender)) {
                 messageToSend = filter.filterMessageContent(originalMessage);
             }
 
-            // Stuur met behouden formatting en ranks
-            recipient.sendMessage(String.format(format, sender.getDisplayName(), messageToSend));
+            // Render met de originele renderer om formatting en ranks te behouden (compatibel met EssentialsX etc.)
+            Component rendered = event.renderer().render(sender, sender.displayName(), messageToSend, recipient);
+
+            // Stuur het gerenderde bericht
+            recipient.sendMessage(rendered);
         }
     }
 }

@@ -1,13 +1,16 @@
 package twotoz.skittleEssentials.filters;
 
-
-import twotoz.skittleEssentials.SkittleEssentials;
 import com.earth2me.essentials.Essentials;
 import com.earth2me.essentials.User;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextReplacementConfig;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
+import twotoz.skittleEssentials.SkittleEssentials;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class NewPlayerFilter {
 
@@ -148,56 +151,35 @@ public class NewPlayerFilter {
     }
 
     /**
-     * Filter a chat message for blocked words
-     * Returns the filtered message with blocked words replaced
-     */
-    public String filterMessage(Player player, String message) {
-        if (!isChatFilterEnabled() || blockedWords.isEmpty()) {
-            return message;
-        }
-
-        // Don't filter for players with bypass permission
-        if (player.hasPermission("skittle.newplayerfilter.bypass")) {
-            return message;
-        }
-
-        // Don't filter if player is not new
-        if (!isNewPlayer(player)) {
-            return message;
-        }
-
-        return filterMessageContent(message);
-    }
-
-    /**
      * Filter message content without player checks
      * Used by chat listener which already checked if filtering is needed
      */
-    public String filterMessageContent(String message) {
+    public Component filterMessageContent(Component original) {
         if (blockedWords.isEmpty()) {
-            return message;
+            return original;
         }
 
-        String filtered = message;
-        boolean wasFiltered = false;
+        Component filtered = original;
 
-        // Check each blocked word (case-insensitive)
         for (String blockedWord : blockedWords) {
             if (blockedWord.isEmpty()) continue;
 
-            // Use word boundaries to match whole words only
-            // (?i) makes it case-insensitive
-            String regex = "(?i)\\b" + java.util.regex.Pattern.quote(blockedWord) + "\\b";
+            // Use word boundaries to match whole words only, case-insensitive
+            Pattern regex = Pattern.compile("\\b" + Pattern.quote(blockedWord) + "\\b", Pattern.CASE_INSENSITIVE);
 
-            if (filtered.matches(".*" + regex + ".*")) {
-                filtered = filtered.replaceAll(regex, replacementString);
-                wasFiltered = true;
-            }
+            filtered = filtered.replaceText(TextReplacementConfig.builder()
+                    .match(regex)
+                    .replacement(replacementString)
+                    .build());
         }
 
-        // Log if message was filtered and logging is enabled (optioneel, maar hou het als config optie)
-        if (wasFiltered && logFilteredMessages) {
-            plugin.getLogger().info("[ChatFilter] Message filtered: " + message + " -> " + filtered);
+        // Log if message was filtered and logging is enabled
+        if (logFilteredMessages) {
+            String origPlain = PlainTextComponentSerializer.plainText().serialize(original);
+            String filtPlain = PlainTextComponentSerializer.plainText().serialize(filtered);
+            if (!origPlain.equals(filtPlain)) {
+                plugin.getLogger().info("[ChatFilter] Message filtered: " + origPlain + " -> " + filtPlain);
+            }
         }
 
         return filtered;
