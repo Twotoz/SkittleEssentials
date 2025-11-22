@@ -1,6 +1,8 @@
 package twotoz.skittleEssentials;
 
 import com.earth2me.essentials.Essentials;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.ProtocolManager;
 import net.luckperms.api.LuckPerms;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -29,6 +31,7 @@ public final class SkittleEssentials extends JavaPlugin {
     private FakePlayersManager fakePlayersManager;
     private NewPlayerFilter newPlayerFilter;
     private NewPlayerFilterListener newPlayerFilterListener;
+    private ChatFilterListener chatFilterListener;
     private Economy economy;
     private Essentials essentials;
     private LuckPerms luckPerms;
@@ -57,6 +60,17 @@ public final class SkittleEssentials extends JavaPlugin {
             newPlayerFilter = new NewPlayerFilter(this, essentials);
             newPlayerFilterListener = new NewPlayerFilterListener(this, newPlayerFilter);
             getServer().getPluginManager().registerEvents(newPlayerFilterListener, this);
+            
+            // Setup ProtocolLib Chat Filter (requires ProtocolLib)
+            if (setupProtocolLib()) {
+                ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
+                chatFilterListener = new ChatFilterListener(this, newPlayerFilter);
+                protocolManager.addPacketListener(chatFilterListener);
+                getLogger().info("✅ Chat filter loaded with ProtocolLib!");
+            } else {
+                getLogger().warning("⚠ ProtocolLib not found! Chat filtering disabled.");
+            }
+            
             getLogger().info("✅ NewPlayerFilter loaded!");
         } else {
             getLogger().warning("⚠ NewPlayerFilter disabled - Essentials not available!");
@@ -82,6 +96,13 @@ public final class SkittleEssentials extends JavaPlugin {
 
         // Setup Jailban with Bail System
         jailDataManager = new JailDataManager(this);
+        
+        // Migrate old YAML data if exists
+        java.io.File oldJailData = new java.io.File(new java.io.File(getDataFolder(), "jaildata"), "jailbalance.yml");
+        if (oldJailData.exists()) {
+            jailDataManager.migrateFromYAML(oldJailData);
+        }
+        
         jailbanManager = new JailbanManager(this, jailDataManager);
 
         if (jailbanManager.isConfigured()) {
@@ -172,6 +193,10 @@ public final class SkittleEssentials extends JavaPlugin {
         return luckPerms != null;
     }
 
+    private boolean setupProtocolLib() {
+        return getServer().getPluginManager().getPlugin("ProtocolLib") != null;
+    }
+
     public void reloadSettings() {
         reloadConfig();
 
@@ -211,6 +236,11 @@ public final class SkittleEssentials extends JavaPlugin {
             newPlayerFilter.loadConfig();
         }
 
+        // Reload chat filter patterns
+        if (chatFilterListener != null) {
+            chatFilterListener.loadFilterPatterns();
+        }
+
         // Reload fake players config
         if (fakePlayersManager != null) {
             fakePlayersManager.stop();
@@ -245,9 +275,9 @@ public final class SkittleEssentials extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Force save jail data before shutdown
+        // Shutdown jail database connection
         if (jailDataManager != null) {
-            jailDataManager.forceSave();
+            jailDataManager.shutdown();
         }
         
         // FIXED: Call shutdown() instead of clear() to properly stop verification task
