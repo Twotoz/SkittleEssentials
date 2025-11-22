@@ -135,6 +135,11 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
     // COMBAT RESET — NO SPAM WHEN ALREADY SIZE 1.0
     // =====================================================================
     private void resetAndCooldown(Player player, String message) {
+        // Check voor permanent size permission
+        if (player.hasPermission("skittle.sizer.permanent")) {
+            return; // Skip reset voor spelers met permanent size permission
+        }
+        
         executeSync(() -> {
 
             double currentScale = 1.0;
@@ -143,10 +148,13 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
 
             boolean changed = currentScale != 1.0;
 
-            resetToDefaults(player);
+            // Alleen resetten en particles spawnen als er daadwerkelijk iets verandert
+            if (changed) {
+                resetToDefaults(player);
+                player.sendMessage(message);
+            }
+            
             updateOriginalJumpStrength(player);
-
-            if (changed) player.sendMessage(message);
 
             BukkitTask task = activeShiftTasks.remove(player.getUniqueId());
             if (task != null) task.cancel();
