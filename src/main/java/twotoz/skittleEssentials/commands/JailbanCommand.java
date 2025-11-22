@@ -1,7 +1,5 @@
-package twotoz.skittleEssentials.commands; // add tab completion to /jailunban!!! retard
+package twotoz.skittleEssentials.commands;
 
-import twotoz.skittleEssentials.SkittleEssentials;
-import twotoz.skittleEssentials.managers.JailbanManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
@@ -10,6 +8,8 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import twotoz.skittleEssentials.SkittleEssentials;
+import twotoz.skittleEssentials.managers.JailbanManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -341,7 +341,7 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
                         .filter(d -> d.startsWith(args[1]))
                         .collect(Collectors.toList());
             }
-        } else if (command.getName().equalsIgnoreCase("unjail")) {
+        } else if (command.getName().equalsIgnoreCase("unjailban")) { // FIXED: Was "unjail"
             if (args.length == 1) {
                 // Suggest online players
                 return Bukkit.getOnlinePlayers().stream()

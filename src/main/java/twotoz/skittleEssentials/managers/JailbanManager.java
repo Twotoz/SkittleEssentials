@@ -1,13 +1,11 @@
 package twotoz.skittleEssentials.managers;
 
-
 import twotoz.skittleEssentials.SkittleEssentials;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -18,22 +16,18 @@ public class JailbanManager {
     private final SkittleEssentials plugin;
     private final JailDataManager jailDataManager;
 
-    // Jail region data
     private Location pos1;
     private Location pos2;
     private Location jailSpawn;
 
-    // Jailbanned players - Thread-safe concurrent set
     private final Set<UUID> jailbannedPlayers = ConcurrentHashMap.newKeySet();
 
-    // Region bounds (for efficient checking)
     private double minX, maxX;
     private double minY, maxY;
     private double minZ, maxZ;
     private String jailWorld;
 
-    // Settings
-    private int boundaryCooldown; // Seconds between boundary messages
+    private int boundaryCooldown;
 
     public JailbanManager(SkittleEssentials plugin, JailDataManager jailDataManager) {
         this.plugin = plugin;
@@ -50,7 +44,6 @@ public class JailbanManager {
 
         boundaryCooldown = section.getInt("boundary-message-cooldown", 3);
 
-        // Load region
         ConfigurationSection regionSection = section.getConfigurationSection("region");
         if (regionSection == null) {
             plugin.getLogger().warning("Jailban region configuration not found!");
@@ -104,7 +97,7 @@ public class JailbanManager {
             }
         }
 
-        // Calculate region bounds for efficient checking
+        // Calculate region bounds
         if (pos1 != null && pos2 != null) {
             jailWorld = pos1.getWorld().getName();
             minX = Math.min(pos1.getX(), pos2.getX());
@@ -121,13 +114,8 @@ public class JailbanManager {
     }
 
     public boolean isInJailRegion(Location location) {
-        if (pos1 == null || pos2 == null) {
-            return false;
-        }
-
-        if (!location.getWorld().getName().equals(jailWorld)) {
-            return false;
-        }
+        if (pos1 == null || pos2 == null) return false;
+        if (!location.getWorld().getName().equals(jailWorld)) return false;
 
         double x = location.getX();
         double y = location.getY();
@@ -140,24 +128,46 @@ public class JailbanManager {
 
     public void jailban(Player player, String reason, double bailAmount) {
         jailbannedPlayers.add(player.getUniqueId());
-        jailDataManager.setJailBailWithReason(player.getUniqueId(), bailAmount, reason);
+
+        jailDataManager.setJailBailWithReason(player.getUniqueId(), bailAmount, reason)
+                .exceptionally(throwable -> {
+                    plugin.getLogger().warning("Failed to save jail data for " + player.getName());
+                    throwable.printStackTrace();
+                    return null;
+                });
     }
 
-    // Offline player support
     public void jailban(UUID playerId, String reason, double bailAmount) {
         jailbannedPlayers.add(playerId);
-        jailDataManager.setJailBailWithReason(playerId, bailAmount, reason);
+
+        jailDataManager.setJailBailWithReason(playerId, bailAmount, reason)
+                .exceptionally(throwable -> {
+                    plugin.getLogger().warning("Failed to save jail data for " + playerId);
+                    throwable.printStackTrace();
+                    return null;
+                });
     }
 
     public void unjailban(Player player) {
         jailbannedPlayers.remove(player.getUniqueId());
-        jailDataManager.removeJailData(player.getUniqueId());
+
+        jailDataManager.removeJailData(player.getUniqueId())
+                .exceptionally(throwable -> {
+                    plugin.getLogger().warning("Failed to remove jail data for " + player.getName());
+                    throwable.printStackTrace();
+                    return null;
+                });
     }
 
-    // Offline player support
     public void unjailban(UUID playerId) {
         jailbannedPlayers.remove(playerId);
-        jailDataManager.removeJailData(playerId);
+
+        jailDataManager.removeJailData(playerId)
+                .exceptionally(throwable -> {
+                    plugin.getLogger().warning("Failed to remove jail data for " + playerId);
+                    throwable.printStackTrace();
+                    return null;
+                });
     }
 
     public boolean isJailbanned(Player player) {
@@ -181,7 +191,12 @@ public class JailbanManager {
     }
 
     public void addBalance(Player player, double amount) {
-        jailDataManager.addBalance(player.getUniqueId(), amount);
+        jailDataManager.addBalance(player.getUniqueId(), amount)
+                .exceptionally(throwable -> {
+                    plugin.getLogger().warning("Failed to add balance for " + player.getName());
+                    throwable.printStackTrace();
+                    return null;
+                });
     }
 
     public boolean canAffordBail(Player player) {
@@ -191,7 +206,6 @@ public class JailbanManager {
     public void bailOut(Player player) {
         if (canAffordBail(player)) {
             unjailban(player);
-            // Player stays at current location - no teleport
         }
     }
 
@@ -222,9 +236,7 @@ public class JailbanManager {
     }
 
     public void enforceJailBounds(Player player) {
-        if (jailSpawn != null) {
-            player.teleport(jailSpawn);
-        }
+        if (jailSpawn != null) player.teleport(jailSpawn);
     }
 
     public int getBoundaryCooldown() {
@@ -232,21 +244,14 @@ public class JailbanManager {
     }
 
     public boolean canUseCommand(Player player, String command) {
-        if (!isJailbanned(player)) {
-            return true;
-        }
-
-        if (player.hasPermission("skittle.jailban.bypass")) {
-            return true;
-        }
+        if (!isJailbanned(player)) return true;
+        if (player.hasPermission("skittle.jailban.bypass")) return true;
 
         List<String> allowedCommands = plugin.getConfig().getStringList("jailban.allowed-commands");
         for (String allowed : allowedCommands) {
-            if (command.toLowerCase().startsWith(allowed.toLowerCase())) {
+            if (command.toLowerCase().startsWith(allowed.toLowerCase()))
                 return true;
-            }
         }
-
         return false;
     }
 
@@ -280,23 +285,17 @@ public class JailbanManager {
     }
 
     public boolean canSeeJailChat(Player player) {
-        if (isJailbanned(player)) {
-            return true;
-        }
-
-        if (isInJailRegion(player.getLocation())) {
-            return true;
-        }
-
+        if (isJailbanned(player)) return true;
+        if (isInJailRegion(player.getLocation())) return true;
         return player.hasPermission("skittle.jailban.notify");
     }
 
     public void loadJailedPlayersFromData() {
-        // Load alle jailed players uit de YML file bij server start
         jailbannedPlayers.clear();
+
+        // IMPORTANT: reload() returns void → never dereference
         jailDataManager.reload();
 
-        // Haal alle jailed player UUIDs op uit de data
         Set<UUID> jailedUUIDs = jailDataManager.getAllJailedPlayers();
         jailbannedPlayers.addAll(jailedUUIDs);
 
