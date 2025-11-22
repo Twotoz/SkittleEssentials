@@ -1,5 +1,5 @@
 name: SkittleEssentials
-version: 1.2.0
+version: 1.3.0
 main: twotoz.skittleEssentials.SkittleEssentials
 api-version: 1.20
 depend: [ProtocolLib, Vault, LuckPerms, Essentials]
@@ -81,6 +81,9 @@ permissions:
   skittle.sizer.admin:
     description: Allow using full scale range (0.01 to 25.0)
     default: op
+  skittle.sizer.permanent:
+    description: Keep size permanent (not reset on combat/damage)
+    default: false
   skittle.buildmode:
     description: Allow using build mode
     default: op
