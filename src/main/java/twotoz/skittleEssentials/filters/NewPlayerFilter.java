@@ -195,7 +195,7 @@ public class NewPlayerFilter {
             }
         }
 
-        // Log if message was filtered and logging is enabled
+        // Log if message was filtered and logging is enabled (optioneel, maar hou het als config optie)
         if (wasFiltered && logFilteredMessages) {
             plugin.getLogger().info("[ChatFilter] Message filtered: " + message + " -> " + filtered);
         }

@@ -64,8 +64,8 @@ public class NewPlayerFilterListener implements Listener {
         for (Player recipient : event.getRecipients()) {
             String messageToSend = originalMessage;
 
-            // Filter alleen voor nieuwe spelers (ontvangers met te weinig playtime)
-            if (filter.isNewPlayer(recipient)) {
+            // Filter alleen voor nieuwe spelers (ontvangers met te weinig playtime), maar skip voor de sender zelf
+            if (filter.isNewPlayer(recipient) && recipient != sender) {
                 messageToSend = filter.filterMessageContent(originalMessage);
             }
 
