@@ -261,8 +261,3 @@ Grants access to **all plugin features**.
 2. Install all dependencies.  
 3. Place the plugin `.jar` in `/plugins`.  
 4. Restart your server.  
-
----
-
-# ❤️ Support
-Feel free to open an Issue or Pull Request on GitHub for bugs, suggestions, or contributions.
