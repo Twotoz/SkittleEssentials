@@ -26,7 +26,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            sender.sendMessage("§e§l    SkittleEssentials v1.3.1");
+            sender.sendMessage("§e§l    SkittleEssentials v1.4.1");
             sender.sendMessage("§7        Created by: §eTwotoz");
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             sender.sendMessage("");
@@ -36,6 +36,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§e▪ §7Jailban - Prison system with bail mechanic");
             sender.sendMessage("§e▪ §7Jail Vote - Community voting system");
             sender.sendMessage("§e▪ §7Staff Chat - Private staff communication");
+            sender.sendMessage("§e▪ §7Local Chat - Proximity chat with spy mode");
             sender.sendMessage("§e▪ §7Baltop Rewards - Auto LuckPerms groups for rich players");
             sender.sendMessage("§e▪ §7Fake Players - Server list spoofing");
             sender.sendMessage("§e▪ §7New Player Filter - Command blocking");
@@ -45,6 +46,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§e/buildmode §7- Toggle build mode");
             sender.sendMessage("§e/jailban §7- Manage jail system");
             sender.sendMessage("§e/startjailvote §7- Start community jail vote");
+            sender.sendMessage("§e/localchat §7- Toggle local chat");
             sender.sendMessage("§e/skittle help §7- View all commands");
             sender.sendMessage("§e/skittle reload §7- Reload configuration");
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -193,26 +195,28 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
                 case "staffchat":
                 case "staff":
                     sender.sendMessage("§6§l=== Staff Chat Help ===");
-                    sender.sendMessage("");
                     sender.sendMessage("§7Method 1 - Toggle Mode:");
                     sender.sendMessage("§e/sct §7or §e/staffchat §7- Toggle staff chat on/off");
-                    sender.sendMessage("§7When enabled, all messages go to staff chat");
                     sender.sendMessage("");
                     sender.sendMessage("§7Method 2 - Prefix Mode:");
                     sender.sendMessage("§7Type §e! §7before your message to use staff chat");
-                    sender.sendMessage("§7Example: §e!Hey team, check spawn");
                     sender.sendMessage("");
-                    sender.sendMessage("§7Features:");
-                    sender.sendMessage("§e▪ §7Only staff can see messages");
-                    sender.sendMessage("§e▪ §7Discord bots can't see it");
-                    sender.sendMessage("§e▪ §7Logged in console");
-                    sender.sendMessage("§e▪ §7Both methods work together");
+                    sender.sendMessage("§7Aliases: §e/sct, /sc");
+                    return true;
+
+                case "localchat":
+                case "local":
+                    sender.sendMessage("§6§l=== Local Chat Help ===");
+                    sender.sendMessage("§7Chat with nearby players.");
                     sender.sendMessage("");
-                    sender.sendMessage("§7Aliases:");
-                    sender.sendMessage("§e/staffchat §7| §e/sct §7| §e/sc");
+                    sender.sendMessage("§7Commands:");
+                    sender.sendMessage("§e/localchat §7- Toggle local chat mode");
+                    sender.sendMessage("§e/localchatspy §7- Toggle spy mode (see all)");
+                    sender.sendMessage("§7Or type §e? §7before message");
                     sender.sendMessage("");
                     sender.sendMessage("§7Permissions:");
-                    sender.sendMessage("§e- skittle.staffchat §7- Use and see staff chat");
+                    sender.sendMessage("§e- skittle.localchat.use");
+                    sender.sendMessage("§e- skittle.localchat.spy");
                     return true;
 
                 case "baltop":
@@ -220,17 +224,8 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage("§6§l=== Baltop Rewards Help ===");
                     sender.sendMessage("§7Automatic LuckPerms groups for top 3 richest players");
                     sender.sendMessage("");
-                    sender.sendMessage("§7How it works:");
-                    sender.sendMessage("§e▪ §7Checks every 30 minutes");
-                    sender.sendMessage("§e▪ §7#1 gets added to rank-1-group");
-                    sender.sendMessage("§e▪ §7#2 gets added to rank-2-group");
-                    sender.sendMessage("§e▪ §7#3 gets added to rank-3-group");
-                    sender.sendMessage("§e▪ §7Groups are automatically created if missing");
-                    sender.sendMessage("");
                     sender.sendMessage("§7Admin Commands:");
                     sender.sendMessage("§e/skittle baltop §7- Force manual update");
-                    sender.sendMessage("");
-                    sender.sendMessage("§7Requires: §eEssentials, LuckPerms");
                     return true;
 
                 case "newplayerfilter":
@@ -238,27 +233,12 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
                 case "npf":
                     sender.sendMessage("§6§l=== New Player Filter Help ===");
                     sender.sendMessage("§7Command blocking for new players");
-                    sender.sendMessage("");
-                    sender.sendMessage("§7How it works:");
-                    sender.sendMessage("§e▪ §7Blocks certain commands until playtime threshold met");
-                    sender.sendMessage("§e▪ §7Shows 'No permission.' to new players");
-                    sender.sendMessage("§e▪ §7Supports both base commands and specific args");
-                    sender.sendMessage("§e▪ §7Example: 'warp' blocks all, 'warp shop' blocks specific");
-                    sender.sendMessage("");
-                    sender.sendMessage("§7Default threshold: §e3.0 hours playtime");
-                    sender.sendMessage("§7Message to new player: §cNo permission.");
-                    sender.sendMessage("");
-                    sender.sendMessage("§7Permissions:");
-                    sender.sendMessage("§e- skittle.newplayerfilter.bypass §7- Bypass all filters");
-                    sender.sendMessage("§7(OP players automatically bypass)");
-                    sender.sendMessage("");
-                    sender.sendMessage("§7Configuration: §econfig.yml > new-player-filter");
-                    sender.sendMessage("§7Requires: §eEssentials (for playtime tracking)");
+                    sender.sendMessage("§7Shows 'No permission.' to new players");
                     return true;
 
                 default:
                     sender.sendMessage("§cUnknown help topic: §e" + topic);
-                    sender.sendMessage("§7Available topics: §esizer, buildmode, jailban, jailvote, staffchat, baltop, newplayerfilter");
+                    sender.sendMessage("§7Available topics: §esizer, buildmode, jailban, jailvote, staffchat, localchat, baltop, newplayerfilter");
                     return true;
             }
         }
@@ -270,7 +250,6 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/skittle §7- Plugin information");
         sender.sendMessage("§e/skittle reload §7- Reload configuration");
         sender.sendMessage("§e/skittle baltop §7- Force baltop update");
-        sender.sendMessage("§e/skittle info §7- Plugin details");
         sender.sendMessage("");
         sender.sendMessage("§6Available Help Topics:");
         sender.sendMessage("§e/skittle help sizer §7- Player size system");
@@ -278,6 +257,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/skittle help jailban §7- Prison bail system");
         sender.sendMessage("§e/skittle help jailvote §7- Community voting");
         sender.sendMessage("§e/skittle help staffchat §7- Private staff chat");
+        sender.sendMessage("§e/skittle help localchat §7- Proximity chat");
         sender.sendMessage("§e/skittle help baltop §7- Baltop rewards");
         sender.sendMessage("§e/skittle help newplayerfilter §7- Command blocking");
         return true;
@@ -287,14 +267,9 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         sender.sendMessage("§e§l    SkittleEssentials Info");
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        sender.sendMessage("§7Version: §e1.3.1");
+        sender.sendMessage("§7Version: §e1.4.1");
         sender.sendMessage("§7Author: §eTwotoz");
         sender.sendMessage("§7API: §ePaper 1.20+");
-        sender.sendMessage("");
-        sender.sendMessage("§7Dependencies:");
-        sender.sendMessage("§e▪ §7Vault (Required)");
-        sender.sendMessage("§e▪ §7LuckPerms (Required)");
-        sender.sendMessage("§e▪ §7Essentials (Required)");
         sender.sendMessage("");
         sender.sendMessage("§7Features Status:");
 
@@ -312,6 +287,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§a✓ §7Jailban Bail System");
         sender.sendMessage("§a✓ §7Jail Vote System");
         sender.sendMessage("§a✓ §7Staff Chat");
+        sender.sendMessage("§a✓ §7Local Chat");
         sender.sendMessage((baltopEnabled ? "§a✓" : "§c✗") + " §7Baltop Rewards");
         sender.sendMessage((filterEnabled ? "§a✓" : "§c✗") + " §7New Player Filter" +
                 (filterEnabled ? " §7(" + newPlayerFilter.getPlaytimeThresholdHours() + "h threshold)" : ""));
@@ -321,7 +297,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleVersion(CommandSender sender) {
-        sender.sendMessage("§eSkittleEssentials §7v§61.3.1");
+        sender.sendMessage("§eSkittleEssentials §7v§61.4.1");
         sender.sendMessage("§7Running on §e" + plugin.getServer().getName() + " " + plugin.getServer().getVersion());
         return true;
     }
@@ -343,7 +319,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
                     })
                     .collect(Collectors.toList());
         } else if (args.length == 2 && args[0].equalsIgnoreCase("help")) {
-            List<String> topics = Arrays.asList("sizer", "buildmode", "jailban", "jailvote", "staffchat", "baltop", "newplayerfilter");
+            List<String> topics = Arrays.asList("sizer", "buildmode", "jailban", "jailvote", "staffchat", "localchat", "baltop", "newplayerfilter");
             return topics.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                     .collect(Collectors.toList());

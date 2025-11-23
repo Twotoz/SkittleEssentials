@@ -1,6 +1,6 @@
 # ╔══════════════════════════════════════════════════════════════╗
 # ║              SkittleEssentials Configuration                 ║
-# ║                    Version 1.3.0                             ║
+# ║                    Version 1.4.0                             ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 # ┌─────────────────────────────────────────────────────────────┐
@@ -20,7 +20,7 @@ fake-players:
 
 
 # ┌─────────────────────────────────────────────────────────────┐
-# │                 NEW PLAYER FILTER SYSTEM                  │
+# │                 NEW PLAYER FILTER SYSTEM                    │
 # └─────────────────────────────────────────────────────────────┘
 # Block commands for players under a certain playtime
 new-player-filter:
@@ -46,6 +46,16 @@ staffchat:
   prefix: "&7[&c&lSTAFF&7]"                      # Prefix shown before staff messages
   format: "&f{player} &8: &7{message}"           # Format: {player} = name, {message} = text
 
+# ┌─────────────────────────────────────────────────────────────┐
+# │                    LOCAL CHAT SYSTEM                        │
+# └─────────────────────────────────────────────────────────────┘
+# Chat with players in a specific radius
+# Use "?message" or toggle with /localchat
+localchat:
+  radius: 20.0
+  prefix: "&e[&6LocalChat&e]"
+  spy-prefix: "&6[LocalChatSpy]" #localchatspy
+  format: "&f{player} &8: &7{message}"
 
 # ┌─────────────────────────────────────────────────────────────┐
 # │                    BUILDMODE SYSTEM                         │

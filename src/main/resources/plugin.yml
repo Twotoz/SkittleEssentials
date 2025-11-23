@@ -1,5 +1,5 @@
 name: SkittleEssentials
-version: 1.3.0
+version: 1.4.1
 main: twotoz.skittleEssentials.SkittleEssentials
 api-version: 1.20
 depend: [ProtocolLib, Vault, LuckPerms, Essentials]
@@ -65,6 +65,20 @@ commands:
     permission: skittle.staffchat
     permission-message: §cYou don't have permission to use staff chat!
 
+  localchat:
+    description: Toggle local chat mode
+    usage: /<command>
+    aliases: [lc, lchat]
+    permission: skittle.localchat.use
+    permission-message: §cYou don't have permission to use local chat!
+
+  localchatspy:
+    description: Toggle local chat spy mode to see all local messages
+    usage: /<command>
+    aliases: [lcspy, lspy]
+    permission: skittle.localchat.spy
+    permission-message: §cYou don't have permission to use local chat spy!
+
   skittle:
     description: Reload the SkittleEssentials configuration
     usage: /<command> reload
@@ -102,6 +116,12 @@ permissions:
   skittle.staffchat:
     description: Use staff chat with ! prefix and see staff messages
     default: op
+  skittle.localchat.use:
+    description: Allow using local chat
+    default: true
+  skittle.localchat.spy:
+    description: Allow spying on local chat globally
+    default: op
   skittle.newplayerfilter.bypass:
     description: Bypass new player filter restrictions (chat filtering and command blocking)
     default: op
@@ -121,5 +141,7 @@ permissions:
       skittle.jailban.notify: true
       skittle.jailvote.start: true
       skittle.staffchat: true
+      skittle.localchat.use: true
+      skittle.localchat.spy: true
       skittle.newplayerfilter.bypass: true
       skittle.admin: true

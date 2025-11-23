@@ -23,12 +23,12 @@ public final class SkittleEssentials extends JavaPlugin {
     private JailbanManager jailbanManager;
     private JailbanListener jailbanListener;
     private StaffChatListener staffChatListener;
+    private LocalChatListener localChatListener;
     private JailVoteManager jailVoteManager;
     private BaltopRewardManager baltopRewardManager;
     private FakePlayersManager fakePlayersManager;
     private NewPlayerFilter newPlayerFilter;
     private NewPlayerFilterListener newPlayerFilterListener;
-    // ChatFilterListener removed
     private Economy economy;
     private Essentials essentials;
     private LuckPerms luckPerms;
@@ -92,11 +92,23 @@ public final class SkittleEssentials extends JavaPlugin {
 
         jailbanManager = new JailbanManager(this, jailDataManager);
 
+        // Define staffChatListener before others
+        staffChatListener = new StaffChatListener(this);
+        getServer().getPluginManager().registerEvents(staffChatListener, this);
+        getLogger().info("✅ Staff chat enabled!");
+
+        // Initialize Local Chat (needs JailbanManager to check regions)
+        localChatListener = new LocalChatListener(this, jailbanManager, staffChatListener);
+        getServer().getPluginManager().registerEvents(localChatListener, this);
+        getCommand("localchat").setExecutor(localChatListener);
+        getCommand("localchatspy").setExecutor(localChatListener); // NEW COMMAND REGISTERED
+        getLogger().info("✅ Local chat enabled!");
+
         if (jailbanManager.isConfigured()) {
             // Load jailed players from data file
             jailbanManager.loadJailedPlayersFromData();
 
-            jailbanListener = new JailbanListener(this, jailbanManager);
+            jailbanListener = new JailbanListener(this, jailbanManager, staffChatListener);
             getServer().getPluginManager().registerEvents(jailbanListener, this);
 
             JailbanCommand jailbanCommand = new JailbanCommand(this, jailbanManager);
@@ -128,11 +140,6 @@ public final class SkittleEssentials extends JavaPlugin {
         } else {
             getLogger().warning("⚠ Jailban region not properly configured!");
         }
-
-        // Setup Staff Chat
-        staffChatListener = new StaffChatListener(this);
-        getServer().getPluginManager().registerEvents(staffChatListener, this);
-        getLogger().info("✅ Staff chat enabled!");
 
         // Setup Baltop Rewards
         if (essentials != null && luckPerms != null) {
@@ -201,6 +208,11 @@ public final class SkittleEssentials extends JavaPlugin {
         // Reload staff chat config
         if (staffChatListener != null) {
             staffChatListener.loadConfig();
+        }
+
+        // Reload local chat config
+        if (localChatListener != null) {
+            localChatListener.loadConfig();
         }
 
         // Reload jail vote config
