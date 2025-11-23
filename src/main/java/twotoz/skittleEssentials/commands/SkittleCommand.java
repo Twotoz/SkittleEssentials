@@ -1,6 +1,5 @@
 package twotoz.skittleEssentials.commands;
 
-
 import twotoz.skittleEssentials.SkittleEssentials;
 import twotoz.skittleEssentials.filters.NewPlayerFilter;
 import twotoz.skittleEssentials.managers.BaltopRewardManager;
@@ -27,7 +26,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            sender.sendMessage("§e§l    SkittleEssentials v1.3.0");
+            sender.sendMessage("§e§l    SkittleEssentials v1.3.1");
             sender.sendMessage("§7        Created by: §eTwotoz");
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             sender.sendMessage("");
@@ -39,7 +38,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§e▪ §7Staff Chat - Private staff communication");
             sender.sendMessage("§e▪ §7Baltop Rewards - Auto LuckPerms groups for rich players");
             sender.sendMessage("§e▪ §7Fake Players - Server list spoofing");
-            sender.sendMessage("§e▪ §7New Player Filter - Command & chat filtering §c[UPDATED]");
+            sender.sendMessage("§e▪ §7New Player Filter - Command blocking");
             sender.sendMessage("");
             sender.sendMessage("§6Quick Commands:");
             sender.sendMessage("§e/sizer §7- Change player sizes");
@@ -237,21 +236,14 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
                 case "newplayerfilter":
                 case "filter":
                 case "npf":
-                    sender.sendMessage("§6§l=== New Player Filter Help §c[UPDATED] ===");
-                    sender.sendMessage("§7Command blocking & chat filtering for new players");
+                    sender.sendMessage("§6§l=== New Player Filter Help ===");
+                    sender.sendMessage("§7Command blocking for new players");
                     sender.sendMessage("");
                     sender.sendMessage("§7How it works:");
                     sender.sendMessage("§e▪ §7Blocks certain commands until playtime threshold met");
-                    sender.sendMessage("§e▪ §7Filters profanity in chat for new players §c[NEW]");
                     sender.sendMessage("§e▪ §7Shows 'No permission.' to new players");
                     sender.sendMessage("§e▪ §7Supports both base commands and specific args");
                     sender.sendMessage("§e▪ §7Example: 'warp' blocks all, 'warp shop' blocks specific");
-                    sender.sendMessage("");
-                    sender.sendMessage("§6Chat Filter Features §c[NEW]:");
-                    sender.sendMessage("§e▪ §7Whole-word matching (won't filter parts of words)");
-                    sender.sendMessage("§e▪ §7Case-insensitive filtering");
-                    sender.sendMessage("§e▪ §7Private messages (/msg) are NOT filtered");
-                    sender.sendMessage("§e▪ §7Configurable replacement string (default: ***)");
                     sender.sendMessage("");
                     sender.sendMessage("§7Default threshold: §e3.0 hours playtime");
                     sender.sendMessage("§7Message to new player: §cNo permission.");
@@ -287,7 +279,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/skittle help jailvote §7- Community voting");
         sender.sendMessage("§e/skittle help staffchat §7- Private staff chat");
         sender.sendMessage("§e/skittle help baltop §7- Baltop rewards");
-        sender.sendMessage("§e/skittle help newplayerfilter §7- Command blocking §c[NEW]");
+        sender.sendMessage("§e/skittle help newplayerfilter §7- Command blocking");
         return true;
     }
 
@@ -295,7 +287,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         sender.sendMessage("§e§l    SkittleEssentials Info");
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        sender.sendMessage("§7Version: §e1.3.0");
+        sender.sendMessage("§7Version: §e1.3.1");
         sender.sendMessage("§7Author: §eTwotoz");
         sender.sendMessage("§7API: §ePaper 1.20+");
         sender.sendMessage("");
@@ -303,7 +295,6 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e▪ §7Vault (Required)");
         sender.sendMessage("§e▪ §7LuckPerms (Required)");
         sender.sendMessage("§e▪ §7Essentials (Required)");
-        sender.sendMessage("§e▪ §7ProtocolLib (Required)");
         sender.sendMessage("");
         sender.sendMessage("§7Features Status:");
 
@@ -324,17 +315,13 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage((baltopEnabled ? "§a✓" : "§c✗") + " §7Baltop Rewards");
         sender.sendMessage((filterEnabled ? "§a✓" : "§c✗") + " §7New Player Filter" +
                 (filterEnabled ? " §7(" + newPlayerFilter.getPlaytimeThresholdHours() + "h threshold)" : ""));
-        
-        if (filterEnabled && newPlayerFilter.isChatFilterEnabled()) {
-            sender.sendMessage("    §e↳ §7Chat Filter: §a✓ §7(" + newPlayerFilter.getBlockedWords().size() + " words)");
-        }
-        
+
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         return true;
     }
 
     private boolean handleVersion(CommandSender sender) {
-        sender.sendMessage("§eSkittleEssentials §7v§61.3.0");
+        sender.sendMessage("§eSkittleEssentials §7v§61.3.1");
         sender.sendMessage("§7Running on §e" + plugin.getServer().getName() + " " + plugin.getServer().getVersion());
         return true;
     }

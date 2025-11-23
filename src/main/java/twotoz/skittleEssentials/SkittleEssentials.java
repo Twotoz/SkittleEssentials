@@ -1,12 +1,9 @@
 package twotoz.skittleEssentials;
 
 import com.earth2me.essentials.Essentials;
-import com.comphenix.protocol.ProtocolLibrary;
-import com.comphenix.protocol.ProtocolManager;
 import net.luckperms.api.LuckPerms;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -31,7 +28,7 @@ public final class SkittleEssentials extends JavaPlugin {
     private FakePlayersManager fakePlayersManager;
     private NewPlayerFilter newPlayerFilter;
     private NewPlayerFilterListener newPlayerFilterListener;
-    private ChatFilterListener chatFilterListener;
+    // ChatFilterListener removed
     private Economy economy;
     private Essentials essentials;
     private LuckPerms luckPerms;
@@ -55,23 +52,13 @@ public final class SkittleEssentials extends JavaPlugin {
             getLogger().info("✅ Essentials hooked!");
         }
 
-        // Setup NewPlayerFilter (requires Essentials)
+        // Setup NewPlayerFilter (Command Filter Only) - Requires Essentials
         if (essentials != null) {
             newPlayerFilter = new NewPlayerFilter(this, essentials);
             newPlayerFilterListener = new NewPlayerFilterListener(this, newPlayerFilter);
             getServer().getPluginManager().registerEvents(newPlayerFilterListener, this);
-            
-            // Setup ProtocolLib Chat Filter (requires ProtocolLib)
-            if (setupProtocolLib()) {
-                ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
-                chatFilterListener = new ChatFilterListener(this, newPlayerFilter);
-                protocolManager.addPacketListener(chatFilterListener);
-                getLogger().info("✅ Chat filter loaded with ProtocolLib!");
-            } else {
-                getLogger().warning("⚠ ProtocolLib not found! Chat filtering disabled.");
-            }
-            
-            getLogger().info("✅ NewPlayerFilter loaded!");
+
+            getLogger().info("✅ NewPlayerFilter (Command Blocker) loaded!");
         } else {
             getLogger().warning("⚠ NewPlayerFilter disabled - Essentials not available!");
         }
@@ -87,7 +74,7 @@ public final class SkittleEssentials extends JavaPlugin {
         getCommand("sizer").setExecutor(new SizerCommand(this));
         getCommand("skittle").setExecutor(new SkittleCommand(this));
 
-        // Setup Buildmode (FIXED: Pass 'this' to constructor)
+        // Setup Buildmode
         buildmodeManager = new BuildmodeManager(this);
         buildmodeListener = new BuildmodeListener(this, buildmodeManager);
         getServer().getPluginManager().registerEvents(buildmodeListener, this);
@@ -96,13 +83,13 @@ public final class SkittleEssentials extends JavaPlugin {
 
         // Setup Jailban with Bail System
         jailDataManager = new JailDataManager(this);
-        
+
         // Migrate old YAML data if exists
         java.io.File oldJailData = new java.io.File(new java.io.File(getDataFolder(), "jaildata"), "jailbalance.yml");
         if (oldJailData.exists()) {
             jailDataManager.migrateFromYAML(oldJailData);
         }
-        
+
         jailbanManager = new JailbanManager(this, jailDataManager);
 
         if (jailbanManager.isConfigured()) {
@@ -193,10 +180,6 @@ public final class SkittleEssentials extends JavaPlugin {
         return luckPerms != null;
     }
 
-    private boolean setupProtocolLib() {
-        return getServer().getPluginManager().getPlugin("ProtocolLib") != null;
-    }
-
     public void reloadSettings() {
         reloadConfig();
 
@@ -234,11 +217,6 @@ public final class SkittleEssentials extends JavaPlugin {
         // Reload new player filter config
         if (newPlayerFilter != null) {
             newPlayerFilter.loadConfig();
-        }
-
-        // Reload chat filter patterns
-        if (chatFilterListener != null) {
-            chatFilterListener.loadFilterPatterns();
         }
 
         // Reload fake players config
@@ -279,8 +257,7 @@ public final class SkittleEssentials extends JavaPlugin {
         if (jailDataManager != null) {
             jailDataManager.shutdown();
         }
-        
-        // FIXED: Call shutdown() instead of clear() to properly stop verification task
+
         if (buildmodeManager != null) {
             buildmodeManager.shutdown();
         }

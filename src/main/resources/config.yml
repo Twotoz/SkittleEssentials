@@ -20,9 +20,9 @@ fake-players:
 
 
 # ┌─────────────────────────────────────────────────────────────┐
-# │                 NEW PLAYER FILTER SYSTEM                    │
+# │                 NEW PLAYER FILTER SYSTEM                  │
 # └─────────────────────────────────────────────────────────────┘
-# Block commands and filter chat for players under a certain playtime
+# Block commands for players under a certain playtime
 new-player-filter:
   enabled: true                           # Enable/disable new player filtering
   playtime-threshold-hours: 3.0           # Minimum playtime hours before restrictions are lifted
@@ -36,40 +36,6 @@ new-player-filter:
   blocked-commands:
     - "warp shop"      # Block /warp shop specifically
     - "ugaga"          # Block all /ugaga commands
-
-    # Add more commands as needed
-
-  # Chat filter - Filters blocked words FOR new players viewing chat
-  # Uses ProtocolLib to modify packets - REQUIRED for this feature!
-  # 
-  # How it works:
-  # - Experienced player says: "badword1 test"
-  # - New player sees: "*** test"  (filtered)
-  # - Experienced player sees: "badword1 test"  (original)
-  # 
-  # Words are filtered with word boundaries (won't filter parts of words)
-  # Case-insensitive matching
-  # IMPORTANT: Private messages (/msg, /tell, /w) are NOT filtered
-  chat-filter:
-    enabled: true                     # Enable/disable chat filtering for new players
-    replacement: "***"                # What to replace blocked words with
-    log-filtered-messages: false      # Log filtered messages to console (for moderation)
-    
-    # List of words to filter in chat for new players
-    # Only whole words are matched - "ass" won't filter "grass"
-    blocked-words:
-      - "fuck"
-      - "shit"
-      - "bitch"
-      - "asshole"
-      - "cunt"
-      - "nigger"
-      - "nigga"
-      - "faggot"
-      - "retard"
-      - "kys"
-      - "cancer"
-      # Add more words as needed for your server
 
 # ┌─────────────────────────────────────────────────────────────┐
 # │                    STAFF CHAT SYSTEM                        │

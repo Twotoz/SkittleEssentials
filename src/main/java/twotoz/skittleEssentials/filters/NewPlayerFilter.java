@@ -2,15 +2,11 @@ package twotoz.skittleEssentials.filters;
 
 import com.earth2me.essentials.Essentials;
 import com.earth2me.essentials.User;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextReplacementConfig;
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import twotoz.skittleEssentials.SkittleEssentials;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
 
 public class NewPlayerFilter {
 
@@ -20,12 +16,6 @@ public class NewPlayerFilter {
     private boolean enabled;
     private double playtimeThresholdHours;
     private List<String> blockedCommands;
-
-    // Chat filter settings
-    private boolean chatFilterEnabled;
-    private String replacementString;
-    private List<String> blockedWords;
-    private boolean logFilteredMessages;
 
     public NewPlayerFilter(SkittleEssentials plugin, Essentials essentials) {
         this.plugin = plugin;
@@ -38,13 +28,7 @@ public class NewPlayerFilter {
         playtimeThresholdHours = plugin.getConfig().getDouble("new-player-filter.playtime-threshold-hours", 2.0);
         blockedCommands = plugin.getConfig().getStringList("new-player-filter.blocked-commands");
 
-        // Chat filter settings
-        chatFilterEnabled = plugin.getConfig().getBoolean("new-player-filter.chat-filter.enabled", true);
-        replacementString = plugin.getConfig().getString("new-player-filter.chat-filter.replacement", "***");
-        blockedWords = plugin.getConfig().getStringList("new-player-filter.chat-filter.blocked-words");
-        logFilteredMessages = plugin.getConfig().getBoolean("new-player-filter.chat-filter.log-filtered-messages", false);
-
-        plugin.getLogger().info("NewPlayerFilter loaded: " + blockedCommands.size() + " blocked commands, " + blockedWords.size() + " filtered words");
+        plugin.getLogger().info("NewPlayerFilter loaded: " + blockedCommands.size() + " blocked commands.");
     }
 
     public boolean isEnabled() {
@@ -141,61 +125,5 @@ public class NewPlayerFilter {
 
     public List<String> getBlockedCommands() {
         return new ArrayList<>(blockedCommands);
-    }
-
-    /**
-     * Check if chat filter is enabled
-     */
-    public boolean isChatFilterEnabled() {
-        return enabled && chatFilterEnabled;
-    }
-
-    /**
-     * Filter message content without player checks
-     * Used by chat listener which already checked if filtering is needed
-     */
-    public Component filterMessageContent(Component original) {
-        if (blockedWords.isEmpty()) {
-            return original;
-        }
-
-        Component filtered = original;
-
-        for (String blockedWord : blockedWords) {
-            if (blockedWord.isEmpty()) continue;
-
-            // Use word boundaries to match whole words only, case-insensitive
-            Pattern regex = Pattern.compile("\\b" + Pattern.quote(blockedWord) + "\\b", Pattern.CASE_INSENSITIVE);
-
-            filtered = filtered.replaceText(TextReplacementConfig.builder()
-                    .match(regex)
-                    .replacement(replacementString)
-                    .build());
-        }
-
-        // Log if message was filtered and logging is enabled
-        if (logFilteredMessages) {
-            String origPlain = PlainTextComponentSerializer.plainText().serialize(original);
-            String filtPlain = PlainTextComponentSerializer.plainText().serialize(filtered);
-            if (!origPlain.equals(filtPlain)) {
-                plugin.getLogger().info("[ChatFilter] Message filtered: " + origPlain + " -> " + filtPlain);
-            }
-        }
-
-        return filtered;
-    }
-
-    /**
-     * Get the replacement string for blocked words
-     */
-    public String getReplacementString() {
-        return replacementString;
-    }
-
-    /**
-     * Get list of blocked words
-     */
-    public List<String> getBlockedWords() {
-        return new ArrayList<>(blockedWords);
     }
 }
