@@ -1,5 +1,5 @@
 name: SkittleEssentials
-version: 1.4.1
+version: 1.5.0
 main: twotoz.skittleEssentials.SkittleEssentials
 api-version: 1.20
 depend: [ProtocolLib, Vault, LuckPerms, Essentials]
@@ -79,6 +79,13 @@ commands:
     permission: skittle.localchat.spy
     permission-message: §cYou don't have permission to use local chat spy!
 
+  jailchatspy:
+    description: Toggle visibility of jail chat messages for staff
+    usage: /<command>
+    aliases: [jcs, jspy]
+    permission: skittle.jailban.spy
+    permission-message: §cYou don't have permission to use jail chat spy!
+
   skittle:
     description: Reload the SkittleEssentials configuration
     usage: /<command> reload
@@ -108,7 +115,10 @@ permissions:
     description: Bypass jail restrictions
     default: op
   skittle.jailban.notify:
-    description: Receive notifications and see jail chat
+    description: Receive notifications about jail events (entry/exit)
+    default: op
+  skittle.jailban.spy:
+    description: Allow spying on jail chat
     default: op
   skittle.jailvote.start:
     description: Start a jail vote (costs money)
@@ -139,6 +149,7 @@ permissions:
       skittle.jailban: true
       skittle.jailban.bypass: true
       skittle.jailban.notify: true
+      skittle.jailban.spy: true
       skittle.jailvote.start: true
       skittle.staffchat: true
       skittle.localchat.use: true

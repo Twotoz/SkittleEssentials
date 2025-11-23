@@ -255,35 +255,6 @@ public class JailbanManager {
         return false;
     }
 
-    public void sendJailMessage(Player sender, String message) {
-        ConfigurationSection chatSection = plugin.getConfig().getConfigurationSection("jailban.chat");
-        String prefix = chatSection != null ? chatSection.getString("prefix", "&7[&cJail&7]") : "&7[&cJail&7]";
-        String format = chatSection != null ? chatSection.getString("format", "&f{player} &8» &7{message}") : "&f{player} &8» &7{message}";
-
-        String formattedMessage = (prefix + " " + format)
-                .replace("&", "§")
-                .replace("{player}", sender.getName())
-                .replace("{message}", message);
-
-        for (Player jailed : getOnlineJailbannedPlayers()) {
-            jailed.sendMessage(formattedMessage);
-        }
-
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (!isJailbanned(online) && isInJailRegion(online.getLocation())) {
-                online.sendMessage(formattedMessage);
-            }
-        }
-
-        for (Player staff : Bukkit.getOnlinePlayers()) {
-            if (staff.hasPermission("skittle.jailban.notify") &&
-                    !isJailbanned(staff) &&
-                    !isInJailRegion(staff.getLocation())) {
-                staff.sendMessage(formattedMessage);
-            }
-        }
-    }
-
     public boolean canSeeJailChat(Player player) {
         if (isJailbanned(player)) return true;
         if (isInJailRegion(player.getLocation())) return true;

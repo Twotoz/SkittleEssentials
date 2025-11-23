@@ -26,7 +26,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            sender.sendMessage("§e§l    SkittleEssentials v1.4.1");
+            sender.sendMessage("§e§l    SkittleEssentials v1.5.0");
             sender.sendMessage("§7        Created by: §eTwotoz");
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             sender.sendMessage("");
@@ -167,13 +167,13 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage("§e/bail [confirm]");
                     sender.sendMessage("§7  Bail yourself out of jail");
                     sender.sendMessage("");
-                    sender.sendMessage("§7Example: §e/jailban Steve 500 Griefing");
-                    sender.sendMessage("§7Players earn $1 per mob kill to pay bail");
+                    sender.sendMessage("§7Spy Mode:");
+                    sender.sendMessage("§e/jailchatspy §7- See jail chat messages");
                     sender.sendMessage("");
                     sender.sendMessage("§7Permissions:");
                     sender.sendMessage("§e- skittle.jailban §7- Use jail commands");
                     sender.sendMessage("§e- skittle.jailban.bypass §7- Bypass restrictions");
-                    sender.sendMessage("§e- skittle.jailban.notify §7- See jail chat");
+                    sender.sendMessage("§e- skittle.jailban.spy §7- Use spy mode");
                     return true;
 
                 case "jailvote":
@@ -267,7 +267,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         sender.sendMessage("§e§l    SkittleEssentials Info");
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        sender.sendMessage("§7Version: §e1.4.1");
+        sender.sendMessage("§7Version: §e1.5.0");
         sender.sendMessage("§7Author: §eTwotoz");
         sender.sendMessage("§7API: §ePaper 1.20+");
         sender.sendMessage("");
@@ -297,7 +297,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleVersion(CommandSender sender) {
-        sender.sendMessage("§eSkittleEssentials §7v§61.4.1");
+        sender.sendMessage("§eSkittleEssentials §7v§61.5.0");
         sender.sendMessage("§7Running on §e" + plugin.getServer().getName() + " " + plugin.getServer().getVersion());
         return true;
     }

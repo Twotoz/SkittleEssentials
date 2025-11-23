@@ -101,7 +101,7 @@ public final class SkittleEssentials extends JavaPlugin {
         localChatListener = new LocalChatListener(this, jailbanManager, staffChatListener);
         getServer().getPluginManager().registerEvents(localChatListener, this);
         getCommand("localchat").setExecutor(localChatListener);
-        getCommand("localchatspy").setExecutor(localChatListener); // NEW COMMAND REGISTERED
+        getCommand("localchatspy").setExecutor(localChatListener);
         getLogger().info("✅ Local chat enabled!");
 
         if (jailbanManager.isConfigured()) {
@@ -122,6 +122,9 @@ public final class SkittleEssentials extends JavaPlugin {
             getCommand("jailbal").setTabCompleter(jailbanCommand);
             getCommand("bail").setExecutor(jailbanCommand);
             getCommand("bail").setTabCompleter(jailbanCommand);
+
+            // Register Jail Chat Spy
+            getCommand("jailchatspy").setExecutor(jailbanListener);
 
             getLogger().info("✅ Jailban bail system loaded!");
 

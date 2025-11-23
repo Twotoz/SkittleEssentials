@@ -1,10 +1,13 @@
 package twotoz.skittleEssentials.listeners;
 
-
 import twotoz.skittleEssentials.SkittleEssentials;
 import twotoz.skittleEssentials.managers.JailbanManager;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.entity.Entity;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -18,7 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class JailbanListener implements Listener {
+public class JailbanListener implements Listener, CommandExecutor {
 
     private final SkittleEssentials plugin;
     private final JailbanManager jailbanManager;
@@ -26,6 +29,9 @@ public class JailbanListener implements Listener {
 
     // Track last block position to avoid checking every tiny movement - Thread-safe
     private final Map<UUID, Location> lastBlockPosition = new ConcurrentHashMap<>();
+
+    // Track staff who have Jail Spy toggled ON
+    private final Map<UUID, Boolean> jailSpyToggle = new ConcurrentHashMap<>();
 
     public JailbanListener(SkittleEssentials plugin, JailbanManager jailbanManager) {
         this(plugin, jailbanManager, null);
@@ -35,6 +41,38 @@ public class JailbanListener implements Listener {
         this.plugin = plugin;
         this.jailbanManager = jailbanManager;
         this.staffChatListener = staffChatListener;
+    }
+
+    /**
+     * Handle /jailchatspy command
+     */
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("§cThis command can only be used by players!");
+            return true;
+        }
+
+        Player player = (Player) sender;
+
+        if (!player.hasPermission("skittle.jailban.spy")) {
+            player.sendMessage("§cYou don't have permission to use jail chat spy!");
+            return true;
+        }
+
+        UUID playerId = player.getUniqueId();
+        boolean currentStatus = jailSpyToggle.getOrDefault(playerId, false);
+        boolean newStatus = !currentStatus;
+
+        jailSpyToggle.put(playerId, newStatus);
+
+        if (newStatus) {
+            player.sendMessage("§c§l🕵 Jail Chat Spy §2§lENABLED§c! You will now see messages from jailed players.");
+        } else {
+            player.sendMessage("§c§l🕵 Jail Chat Spy §c§lDISABLED§c!");
+        }
+
+        return true;
     }
 
     /**
@@ -152,26 +190,52 @@ public class JailbanListener implements Listener {
         boolean senderInJail = jailbanManager.isInJailRegion(sender.getLocation());
         boolean senderJailbanned = jailbanManager.isJailbanned(sender);
 
-        // If sender is in jail, convert to jail chat
+        // --- IF SENDER IS IN JAIL (PRISONER CHAT) ---
         if (senderInJail || senderJailbanned) {
             event.setCancelled(true);
 
-            // Send jail message (synchronously)
+            // Send jail message manually to control recipients (Spy logic)
             plugin.getServer().getScheduler().runTask(plugin, () -> {
-                jailbanManager.sendJailMessage(sender, message);
+
+                // Get config values
+                ConfigurationSection chatSection = plugin.getConfig().getConfigurationSection("jailban.chat");
+                String prefix = chatSection != null ? chatSection.getString("prefix", "&7[&cJail&7]") : "&7[&cJail&7]";
+                String format = chatSection != null ? chatSection.getString("format", "&f{player} &8» &7{message}") : "&f{player} &8» &7{message}";
+
+                String formattedMessage = (prefix + " " + format)
+                        .replace("&", "§")
+                        .replace("{player}", sender.getName())
+                        .replace("{message}", message);
+
+                // Log to console
+                plugin.getLogger().info("[JailChat] " + sender.getName() + ": " + message);
+
+                for (Player recipient : Bukkit.getOnlinePlayers()) {
+                    boolean isRecipientJailbanned = jailbanManager.isJailbanned(recipient);
+                    boolean isRecipientInJail = jailbanManager.isInJailRegion(recipient.getLocation());
+                    boolean hasSpy = recipient.hasPermission("skittle.jailban.spy") && jailSpyToggle.getOrDefault(recipient.getUniqueId(), false);
+
+                    // Send to:
+                    // 1. Other jailed players
+                    // 2. Players inside the jail region
+                    // 3. Staff with Spy enabled
+                    if (isRecipientJailbanned || isRecipientInJail || hasSpy) {
+                        recipient.sendMessage(formattedMessage);
+                    }
+                }
             });
 
             return;
         }
 
-        // If sender is not in jail, remove jailed players from recipients
+        // --- IF SENDER IS NOT IN JAIL (NORMAL CHAT) ---
+        // Remove jailed players from seeing global chat
         event.getRecipients().removeIf(recipient -> {
-            // Keep staff
-            if (recipient.hasPermission("skittle.jailban.notify")) {
-                return false;
-            }
+            // Keep staff (they can see global chat obviously)
+            // But strict notify permission is not for viewing global chat, just normal chat.
+            // We just ensure prisoners don't see it.
 
-            // Remove if jailbanned or in jail region
+            // Remove if jailbanned or in jail region (Prisoners shouldn't see outside world chat)
             return jailbanManager.isJailbanned(recipient) ||
                     jailbanManager.isInJailRegion(recipient.getLocation());
         });
@@ -208,6 +272,7 @@ public class JailbanListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         lastBlockPosition.remove(event.getPlayer().getUniqueId());
+        jailSpyToggle.remove(event.getPlayer().getUniqueId());
     }
 
     /**
