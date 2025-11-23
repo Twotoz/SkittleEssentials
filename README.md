@@ -1,7 +1,7 @@
 # SkittleEssentials
 **Version:** 1.5.0  
 **Author:** Twotoz  
-A powerful all-in-one essentials plugin designed for modern Minecraft servers.  
+A powerful all-in-one essentials plugin designed for the SkittleMC survival minecraft server.  
 Includes staff tools, jail systems, baltop rewards, chat systems, new player filter, build mode safety tools, and more.
 
 ---
