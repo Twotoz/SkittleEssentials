@@ -1,191 +1,230 @@
 # SkittleEssentials
 **Version:** 1.5.0  
 **Author:** Twotoz  
-**Description:** A combination of essential server features for modern Minecraft servers.  
-**Minecraft API Version:** 1.20  
-**Main Class:** `twotoz.skittleEssentials.SkittleEssentials`
-
-SkittleEssentials provides a collection of powerful tools for server management, moderation, chat control, and gameplay enhancements — all bundled into a single plugin.
+A powerful all-in-one essentials plugin designed for modern Minecraft servers.  
+Includes staff tools, jail systems, baltop rewards, chat systems, new player filter, build mode safety tools, and more.
 
 ---
 
 ## 📦 Dependencies
-This plugin requires the following dependencies:
+This plugin requires:
 
-- **ProtocolLib**
-- **Vault**
-- **LuckPerms**
-- **Essentials**
+- ProtocolLib  
+- Vault  
+- LuckPerms  
+- Essentials  
 
-Make sure these are installed before using the plugin.
+Make sure these are installed before running the plugin.
 
 ---
 
-## 🚀 Features
-- Player size scaling with permissions and admin override.
-- Fully featured jail system (bail, chat, vote, monitoring).
-- StaffChat and LocalChat with toggle modes and spy tools.
-- Build Mode for staff, builders, or admins.
-- Live configuration reload via `/skittle reload`.
+# ⚙️ Features Overview
+
+## 👥 Fake Player Spoofer
+Make your server appear more populated in the server list.
+
+- Customizable fake player count  
+- Fake player hover-names  
+- Toggleable in config  
+
+---
+
+## 🧑‍🎓 New Player Filter System
+Restrict commands for players with low playtime.
+
+- Blocks specific commands or command arguments  
+- Custom playtime threshold  
+- Hidden restrictions (“No permission.”)  
+- Helps protect economy and prevent abuse  
+
+---
+
+## 🛠 Build Mode System
+A safe building environment for staff:
+
+- Blocks dangerous or valuable blocks (netherite, spawners, beacons, etc.)
+- Prevents chest, vault, kits, or auction commands  
+- Prevents item duplication or cheating  
+- Fully customizable  
+
+---
+
+## 🚓 JailBan System
+A full prison system with bail mechanics:
+
+- Defined jail region with teleport  
+- Custom jail chat  
+- Players earn $1 bail per mob kill  
+- Blocked interactions (chests/furnaces/etc)  
+- Allowed commands whitelist  
+- Boundary escape messages with cooldown  
+
+---
+
+## 🗳 Jail Vote System
+Democratic community voting to jail problematic players.
+
+- Cost to start a vote  
+- Custom vote duration  
+- Bail amount after successful vote  
+
+---
+
+## 💰 Baltop Rewards System
+Automatically rewards the richest players with LuckPerms groups.
+
+- Updates every X minutes  
+- Custom groups for #1, #2, and #3  
+- Works with Essentials economy  
+
+---
+
+## 🗣 StaffChat System
+Private staff-only communication.
+
+- Use `!` before a message  
+- Fully customizable prefix & format  
+
+---
+
+## 🗨 LocalChat System
+Chat only with players in a radius.
+
+- Toggle with `/localchat` or use `?message`  
+- Customizable radius  
+- LocalChatSpy mode for staff  
+
+---
+
+## 🔍 Player Sizer System
+Scale players up or down.
+
+- Default scale range for normal players  
+- Extended scale range for OPs (0.01 → 25.0)  
+- Automatic attribute scaling  
+- Supports permanent size mode  
 
 ---
 
 # 🧭 Commands
 
 ### `/sizer`
-Change your own size or another player's size.
-```
+Change your own or another player's size.
 
-/sizer <scale>
-/sizer <player> <scale>
+/sizer <scale> /sizer <player> <scale>
 
-```
-**Permission:** `skittle.sizer.use`  
-**Other players:** `skittle.sizer.other`
+Permissions:  
+- `skittle.sizer.use`  
+- `skittle.sizer.other`
 
 ---
 
 ### `/buildmode`
-Toggle Build Mode.
-```
+Toggle build mode.
 
 /buildmode <on|off>
 
-```
-**Permission:** `skittle.buildmode`
+Permission: `skittle.buildmode`
 
 ---
 
 ### `/jailban`
-Send a player to jail with a bail amount.
-```
+Send a player to jail.
 
-/jailban <player> <bail_amount> [reason]
+/jailban <player> <bail> [reason]
 
-```
-**Permission:** `skittle.jailban`
+Permission: `skittle.jailban`
 
 ---
 
 ### `/unjailban`
 Release a jailed player.
-```
 
 /unjailban <player>
 
-```
-**Permission:** `skittle.jailban`
+Permission: `skittle.jailban`
 
 ---
 
 ### `/jaillist`
-Show all jailed players and their bail progress.
-```
+Show jailed players and their bailout progress.
 
 /jaillist
-
-```
-**Permission:** `skittle.jailban`
 
 ---
 
 ### `/jailbal`
-Check your jail balance and bail amount.
-```
+Check your jail balance.
 
 /jailbal
-
-```
 
 ---
 
 ### `/bail`
-Bail yourself out or check bail progress.
-```
+Bail yourself out.
 
 /bail [confirm]
-
-```
 
 ---
 
 ### `/startjailvote`
-Start a community jail vote.
-```
+Start a jail vote.
 
 /startjailvote [confirm]
 
-```
-**Permission:** `skittle.jailvote.start`
+Permission: `skittle.jailvote.start`
 
 ---
 
 ### `/jailvote`
 Vote for who should be jailed.
-```
 
 /jailvote <player>
-
-```
 
 ---
 
 ### `/staffchat`
-Toggle staff chat mode.
-```
+Toggle staff chat.
 
-/staffchat
-Aliases: /sct, /sc
+/staffchat Aliases: /sct, /sc
 
-```
-**Permission:** `skittle.staffchat`
+Permission: `skittle.staffchat`
 
 ---
 
 ### `/localchat`
-Toggle local chat mode.
-```
+Toggle local chat.
 
-/localchat
-Aliases: /lc, /lchat
+/localchat Aliases: /lc, /lchat
 
-```
-**Permission:** `skittle.localchat.use`
+Permission: `skittle.localchat.use`
 
 ---
 
 ### `/localchatspy`
-Toggle spying on all local messages.
-```
+Toggle local chat spy mode.
 
-/localchatspy
-Aliases: /lcspy, /lspy
+/localchatspy Aliases: /lcspy, /lspy
 
-```
-**Permission:** `skittle.localchat.spy`
+Permission: `skittle.localchat.spy`
 
 ---
 
 ### `/jailchatspy`
-Toggle jail chat spy mode for staff.
-```
+View jail chat messages.
 
-/jailchatspy
-Aliases: /jcs, /jspy
+/jailchatspy Aliases: /jcs, /jspy
 
-```
-**Permission:** `skittle.jailban.spy`
+Permission: `skittle.jailban.spy`
 
 ---
 
 ### `/skittle`
-Reload the plugin configuration.
-```
+Reload the plugin.
 
 /skittle reload
 
-```
-**Permission:** `skittle.admin`
+Permission: `skittle.admin`
 
 ---
 
@@ -194,29 +233,36 @@ Reload the plugin configuration.
 | Permission | Description | Default |
 |-----------|-------------|---------|
 | `skittle.sizer.use` | Change your own size | true |
-| `skittle.sizer.other` | Change size of other players | op |
-| `skittle.sizer.admin` | Use full scale range (0.01–25.0) | op |
+| `skittle.sizer.other` | Change other players' size | op |
+| `skittle.sizer.admin` | Use full scale range | op |
 | `skittle.sizer.permanent` | Keep size permanently | false |
-| `skittle.buildmode` | Use Build Mode | op |
-| `skittle.jailban` | Jailban players | op |
+| `skittle.buildmode` | Use build mode | op |
+| `skittle.jailban` | JailBan players | op |
 | `skittle.jailban.bypass` | Bypass jail restrictions | op |
 | `skittle.jailban.notify` | Receive jail notifications | op |
 | `skittle.jailban.spy` | Spy on jail chat | op |
 | `skittle.jailvote.start` | Start jail votes | true |
-| `skittle.staffchat` | Use staff chat & see staff messages | op |
+| `skittle.staffchat` | Use staff chat | op |
 | `skittle.localchat.use` | Use local chat | false |
-| `skittle.localchat.spy` | Spy on all local chat | op |
-| `skittle.newplayerfilter.bypass` | Bypass new player filter restrictions | op |
-| `skittle.admin` | Reload the plugin | op |
+| `skittle.localchat.spy` | Spy on local chat | op |
+| `skittle.newplayerfilter.bypass` | Bypass new player filter | op |
+| `skittle.admin` | Reload plugin | op |
 
-### Wildcard: `skittle.*`
-Grants access to **all** SkittleEssentials permissions.
+### Wildcard
+
+skittle.*
+
+Grants access to **all plugin features**.
 
 ---
 
 # 📥 Installation
-1. Download the latest SkittleEssentials release.  
-2. Install the required dependencies (ProtocolLib, Vault, LuckPerms, Essentials).  
-3. Place the `.jar` file in your server's `/plugins` folder.  
-4. Restart your server.
+1. Download the latest release.  
+2. Install all dependencies.  
+3. Place the plugin `.jar` in `/plugins`.  
+4. Restart your server.  
 
+---
+
+# ❤️ Support
+Feel free to open an Issue or Pull Request on GitHub for bugs, suggestions, or contributions.
