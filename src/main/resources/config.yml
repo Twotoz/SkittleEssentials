@@ -1,6 +1,6 @@
 # ╔══════════════════════════════════════════════════════════════╗
 # ║              SkittleEssentials Configuration                 ║
-# ║                    Version 1.4.0                             ║
+# ║                    Version 1.4.1                             ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 # ┌─────────────────────────────────────────────────────────────┐
@@ -218,7 +218,7 @@ baltop-rewards:
 # Adjust player size with automatic attribute scaling
 sizer:
   # Scale limits for non-OP players
-  default-min-scale: 0.7
+  default-min-scale: 0.3
   default-max-scale: 1.2
 
   # OP players can use any scale
