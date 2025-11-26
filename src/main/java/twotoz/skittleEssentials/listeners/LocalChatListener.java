@@ -25,6 +25,7 @@ public class LocalChatListener implements Listener, CommandExecutor {
     private final JailbanManager jailbanManager;
     private final StaffChatListener staffChatListener;
 
+    // Config values
     private String localPrefix;
     private String spyPrefix;
     private String chatFormat;
@@ -32,9 +33,7 @@ public class LocalChatListener implements Listener, CommandExecutor {
     private double chatRadiusSquared;
 
     // Thread-safe maps for toggles
-    // Stores players who have local chat toggled ON
     private final Map<UUID, Boolean> localChatToggle = new ConcurrentHashMap<>();
-    // Stores staff who have spy mode toggled ON
     private final Map<UUID, Boolean> spyToggle = new ConcurrentHashMap<>();
 
     public LocalChatListener(SkittleEssentials plugin, JailbanManager jailbanManager, StaffChatListener staffChatListener) {
@@ -42,15 +41,18 @@ public class LocalChatListener implements Listener, CommandExecutor {
         this.jailbanManager = jailbanManager;
         this.staffChatListener = staffChatListener;
         loadConfig();
+
+        // Register command executors
+        plugin.getCommand("localchat").setExecutor(this);
+        plugin.getCommand("localchatspy").setExecutor(this);
     }
 
     public void loadConfig() {
-        localPrefix = plugin.getConfig().getString("localchat.prefix", "&e[LocalChat]");
-        spyPrefix = plugin.getConfig().getString("localchat.spy-prefix", "&6[LocalChatSpy]");
+        localPrefix = plugin.getConfig().getString("localchat.prefix", "&e[&6LocalChat&e]");
+        spyPrefix = plugin.getConfig().getString("localchat.spy-prefix", "&6[LocalSpy]");
         chatFormat = plugin.getConfig().getString("localchat.format", "&f{player} &8: &7{message}");
-        chatRadius = plugin.getConfig().getDouble("localchat.radius", 100.0);
-        // Calculate squared radius for efficient distance checks
-        chatRadiusSquared = chatRadius * chatRadius;
+        chatRadius = plugin.getConfig().getDouble("localchat.radius", 20.0);
+        chatRadiusSquared = chatRadius * chatRadius; // Pre-calculate for performance
     }
 
     /**
@@ -66,15 +68,17 @@ public class LocalChatListener implements Listener, CommandExecutor {
         Player player = (Player) sender;
         String cmdName = command.getName().toLowerCase();
 
-        // Handle separated commands
+        // Route to appropriate handler
         if (cmdName.equals("localchatspy") || cmdName.equals("lcspy") || cmdName.equals("lspy")) {
             return handleSpyToggle(player);
         }
 
-        // Default to local chat toggle
         return handleLocalToggle(player, label);
     }
 
+    /**
+     * Handle /localchat toggle
+     */
     private boolean handleLocalToggle(Player player, String label) {
         if (!player.hasPermission("skittle.localchat.use")) {
             player.sendMessage("§cYou don't have permission to use local chat!");
@@ -88,15 +92,18 @@ public class LocalChatListener implements Listener, CommandExecutor {
         localChatToggle.put(playerId, newStatus);
 
         if (newStatus) {
-            player.sendMessage("§eLocal chat mode §2§lENABLED§e! Your messages will be sent locally.");
+            player.sendMessage("§eLocal chat mode §2§lENABLED§e! Your messages will be sent within " + ((int) chatRadius) + " blocks.");
             player.sendMessage("§7Use §f/" + label + " §7again to disable.");
         } else {
-            player.sendMessage("§eLocal chat mode §c§lDISABLED§e! Your messages will be sent globally.");
+            player.sendMessage("§eLocal chat mode §c§lDISABLED§e! Your messages will now be sent globally.");
         }
 
         return true;
     }
 
+    /**
+     * Handle /localchatspy toggle
+     */
     private boolean handleSpyToggle(Player player) {
         if (!player.hasPermission("skittle.localchat.spy")) {
             player.sendMessage("§cYou don't have permission to use local chat spy!");
@@ -110,7 +117,7 @@ public class LocalChatListener implements Listener, CommandExecutor {
         spyToggle.put(playerId, newStatus);
 
         if (newStatus) {
-            player.sendMessage("§6Local Chat Spy §2§lENABLED§6! You will see all local messages.");
+            player.sendMessage("§6Local Chat Spy §2§lENABLED§6! You will see all local messages globally.");
         } else {
             player.sendMessage("§6Local Chat Spy §c§lDISABLED§6!");
         }
@@ -120,20 +127,18 @@ public class LocalChatListener implements Listener, CommandExecutor {
 
     /**
      * Handle local chat with "?" prefix or toggle mode
-     * Priority LOW:
-     * - Runs AFTER StaffChat (Lowest), so we don't pick up staff messages.
-     * - Runs BEFORE JailbanListener (High), but we manually check jail status.
+     * Priority LOW: After StaffChat (LOWEST), before JailChat (HIGH)
      */
     @EventHandler(priority = EventPriority.LOW)
     public void onPlayerChat(AsyncChatEvent event) {
         Player sender = event.getPlayer();
 
-        // 1. Skip if already cancelled (e.g., by StaffChat)
+        // Skip if already cancelled by higher priority handler (e.g., StaffChat)
         if (event.isCancelled()) {
             return;
         }
 
-        // Get message text
+        // Get message from Adventure API
         String message;
         if (event.message() instanceof TextComponent) {
             message = ((TextComponent) event.message()).content();
@@ -142,7 +147,7 @@ public class LocalChatListener implements Listener, CommandExecutor {
                     .serialize(event.message());
         }
 
-        // 2. Check Triggers (Prefix or Toggle)
+        // Check triggers: toggle or "?" prefix
         boolean hasToggle = localChatToggle.getOrDefault(sender.getUniqueId(), false);
         boolean hasPrefix = message.startsWith("?");
 
@@ -150,35 +155,33 @@ public class LocalChatListener implements Listener, CommandExecutor {
             return; // Not a local chat message
         }
 
-        // 3. Jail Check - Local chat is disabled in jail region
-        if (jailbanManager.isInJailRegion(sender.getLocation())) {
+        // CRITICAL: Local chat doesn't work in jail region
+        // Players in jail should use jail chat instead
+        if (jailbanManager != null && jailbanManager.isInJailRegion(sender.getLocation())) {
             if (hasPrefix) {
-                // Only send error if they explicitly tried to use local chat with ?
-                // If they have toggle on, we just let it fall through to regular jail chat (handled by JailbanListener)
+                // Only show error if they explicitly tried with "?"
+                // If toggle is on, let it fall through to jail chat
                 sender.sendMessage("§cLocal chat does not work in jail!");
                 event.setCancelled(true);
             }
-            // If toggle is on, we do nothing here. The event proceeds to JailbanListener (HIGH priority)
-            // which will convert it to [Jail] chat.
-            return;
+            return; // Let jail chat handle it
         }
 
-        // 4. Permission Check
+        // Permission check - if no permission, let message pass through as normal chat
         if (!sender.hasPermission("skittle.localchat.use")) {
-            sender.sendMessage("§cYou don't have permission to use local chat!");
-            event.setCancelled(true);
-            return;
+            return; // Message will be sent as normal chat with "?" prefix
         }
 
-        // 5. Process Local Chat
-        event.setCancelled(true); // Cancel global chat
-
+        // Extract message content BEFORE canceling event
         String localMessageContent = hasPrefix ? message.substring(1).trim() : message.trim();
 
+        // If empty message, let it pass through as normal chat (just "?" in chat)
         if (localMessageContent.isEmpty()) {
-            plugin.getServer().getScheduler().runTask(plugin, () -> sender.sendMessage("§cCannot send empty local message!"));
-            return;
+            return; // Don't cancel - "?" will be sent as normal chat
         }
+
+        // Now we know it's a valid local chat message - cancel event to prevent global broadcast
+        event.setCancelled(true);
 
         // Format messages
         String rawFormat = chatFormat
@@ -188,44 +191,70 @@ public class LocalChatListener implements Listener, CommandExecutor {
         String localFormatted = (localPrefix + " " + rawFormat).replace("&", "§");
         String spyFormatted = (spyPrefix + " " + rawFormat).replace("&", "§");
 
-        // 6. Distribute Messages (Thread-safe iteration)
+        // Distribute messages (synchronously to avoid threading issues)
         plugin.getServer().getScheduler().runTask(plugin, () -> {
             Location senderLoc = sender.getLocation();
 
             for (Player recipient : Bukkit.getOnlinePlayers()) {
-                // Skip if recipient is ignoring sender (if you have an ignore system, otherwise skip)
+                // Check if recipient has spy permission
+                boolean isSpy = spyToggle.getOrDefault(recipient.getUniqueId(), false)
+                        && recipient.hasPermission("skittle.localchat.spy");
 
-                boolean isSpy = spyToggle.getOrDefault(recipient.getUniqueId(), false) && recipient.hasPermission("skittle.localchat.spy");
-                boolean inRange = isRecipientInRange(senderLoc, recipient);
+                // Check if recipient is in range
+                boolean inRange = isInRange(senderLoc, recipient.getLocation());
 
                 if (inRange) {
-                    // Normal local chat
-                    recipient.sendMessage(localFormatted);
+                    // Recipient must have permission to see local messages
+                    if (recipient.hasPermission("skittle.localchat.use")) {
+                        recipient.sendMessage(localFormatted);
+                    }
                 } else if (isSpy) {
-                    // Spy chat (only if NOT in range) - prevents double messages
+                    // Spy can see all local messages (even outside range)
                     recipient.sendMessage(spyFormatted);
                 }
             }
         });
 
-        // 7. Log to Console
+        // Log to console
         plugin.getLogger().info("[LocalChat] " + sender.getName() + ": " + localMessageContent);
     }
 
     /**
-     * Efficiently checks if recipient is in range using squared distance
+     * Efficiently check if recipient is in range using squared distance
+     * Avoids expensive Math.sqrt() call
      */
-    private boolean isRecipientInRange(Location senderLoc, Player recipient) {
-        if (!senderLoc.getWorld().equals(recipient.getWorld())) {
+    private boolean isInRange(Location senderLoc, Location recipientLoc) {
+        // Must be in same world
+        if (!senderLoc.getWorld().equals(recipientLoc.getWorld())) {
             return false;
         }
-        // Use distanceSquared to avoid expensive Math.sqrt calls
-        return senderLoc.distanceSquared(recipient.getLocation()) <= chatRadiusSquared;
+
+        // Use squared distance for performance
+        return senderLoc.distanceSquared(recipientLoc) <= chatRadiusSquared;
     }
 
+    /**
+     * Check if player has local chat toggle enabled
+     * Used by other listeners to check state
+     */
+    public boolean hasLocalChatToggle(UUID playerId) {
+        return localChatToggle.getOrDefault(playerId, false);
+    }
+
+    /**
+     * Check if player has local chat toggle enabled
+     */
+    public boolean hasLocalChatToggle(Player player) {
+        return hasLocalChatToggle(player.getUniqueId());
+    }
+
+    /**
+     * Cleanup HashMaps when players leave to prevent memory leaks
+     */
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        localChatToggle.remove(event.getPlayer().getUniqueId());
-        spyToggle.remove(event.getPlayer().getUniqueId());
+        UUID playerId = event.getPlayer().getUniqueId();
+        localChatToggle.remove(playerId);
+        spyToggle.remove(playerId);
     }
 }
