@@ -128,7 +128,7 @@ permissions:
     default: op
   skittle.localchat.use:
     description: Allow using local chat
-    default: true
+    default: false
   skittle.localchat.spy:
     description: Allow spying on local chat globally
     default: op
