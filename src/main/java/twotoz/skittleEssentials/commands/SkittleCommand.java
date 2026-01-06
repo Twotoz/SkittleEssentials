@@ -26,7 +26,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            sender.sendMessage("§e§l    SkittleEssentials v1.5.0");
+            sender.sendMessage("§e§l    SkittleEssentials v1.5.1");
             sender.sendMessage("§7        Created by: §eTwotoz");
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             sender.sendMessage("");
@@ -267,7 +267,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         sender.sendMessage("§e§l    SkittleEssentials Info");
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        sender.sendMessage("§7Version: §e1.5.0");
+        sender.sendMessage("§7Version: §e1.5.1");
         sender.sendMessage("§7Author: §eTwotoz");
         sender.sendMessage("§7API: §ePaper 1.20+");
         sender.sendMessage("");
@@ -297,7 +297,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleVersion(CommandSender sender) {
-        sender.sendMessage("§eSkittleEssentials §7v§61.5.0");
+        sender.sendMessage("§eSkittleEssentials §7v§61.5.1");
         sender.sendMessage("§7Running on §e" + plugin.getServer().getName() + " " + plugin.getServer().getVersion());
         return true;
     }

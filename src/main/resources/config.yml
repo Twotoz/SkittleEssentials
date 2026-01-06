@@ -1,6 +1,6 @@
 # ╔══════════════════════════════════════════════════════════════╗
 # ║              SkittleEssentials Configuration                 ║
-# ║                    Version 1.5.0                             ║
+# ║                    Version 1.5.1                             ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 # ┌─────────────────────────────────────────────────────────────┐
@@ -52,6 +52,7 @@ staffchat:
 # Chat with players in a specific radius
 # Use "?message" or toggle with /localchat
 localchat:
+  enabled: false                               # Enable/disable local chat module
   radius: 20.0
   prefix: "&e[&6LocalChat&e]"
   spy-prefix: "&6[LocalChatSpy]" #localchatspy
@@ -62,20 +63,25 @@ localchat:
 # └─────────────────────────────────────────────────────────────┘
 # Safe build mode for staff with restricted permissions
 buildmode:
-  # Commands that cannot be used in buildmode
-  blocked-commands:
-    - "echest"
-    - "ec"
-    - "enderchest"
-    - "pv"
-    - "playervault"
-    - "perkvault"
-    - "trade"
-    - "kit"
-    - "invsee"
-    - "openinv"
-    - "ah"
-    - "auctionhouse"
+  # Commands that CAN be used in buildmode (allowlist)
+  # All other commands will be blocked
+  allowed-commands:
+    - "buildmode"
+    - "help"
+    - "spawn"
+    - "teleport"
+    - "tpa"
+    - "tpaccept"
+    - "tpdeny"
+    - "back"
+    - "home"
+    - "sethome"
+    - "delhome"
+    - "warp"
+    - "msg"
+    - "r"
+    - "reply"
+    - "tell"
 
   # Blocks that cannot be placed or broken in buildmode
   # Prevents duplication and obtaining valuable items
@@ -101,12 +107,20 @@ buildmode:
     - "LIGHT"
     - "STRUCTURE_VOID"
 
-    # Elytra and valuable items as blocks
+    # Item-holding blocks (CRITICAL - can be used to smuggle items)
+    - "LECTERN"
+    - "JUKEBOX"
+    - "FLOWER_POT"
+
+    # Elytra and valuable items
     - "ELYTRA"
     - "DRAGON_HEAD"
     - "DRAGON_EGG"
+    - "TRIDENT"
+    - "NETHERITE_INGOT"
+    - "NETHERITE_SCRAP"
 
-    # Shulker boxes (already blocked as containers, but listed for clarity)
+    # Shulker boxes (CRITICAL - already blocked in code but listed for clarity)
     - "SHULKER_BOX"
     - "WHITE_SHULKER_BOX"
     - "ORANGE_SHULKER_BOX"
@@ -125,13 +139,29 @@ buildmode:
     - "RED_SHULKER_BOX"
     - "BLACK_SHULKER_BOX"
 
+    # ALL container blocks (CRITICAL - blocked in code but listed for reference)
+    - "CHEST"
+    - "TRAPPED_CHEST"
+    - "ENDER_CHEST"
+    - "BARREL"
+    - "HOPPER"
+    - "DROPPER"
+    - "DISPENSER"
+    - "FURNACE"
+    - "BLAST_FURNACE"
+    - "SMOKER"
+    - "BREWING_STAND"
+
     # TNT and dangerous blocks
     - "TNT"
     - "TNT_MINECART"
+    - "RESPAWN_ANCHOR"
 
-    # Enchanted/rare items (add more as needed for your server)
-    # - "ENCHANTED_GOLDEN_APPLE"  # These are items, not blocks
-    # Add any custom server items/blocks here
+    # Rare/exploit items
+    - "ENCHANTED_GOLDEN_APPLE"
+    - "TOTEM_OF_UNDYING"
+    - "NETHER_STAR"
+    - "ENCHANTED_BOOK"
 
 
 # ┌─────────────────────────────────────────────────────────────┐

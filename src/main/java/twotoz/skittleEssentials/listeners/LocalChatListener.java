@@ -26,6 +26,7 @@ public class LocalChatListener implements Listener, CommandExecutor {
     private final StaffChatListener staffChatListener;
 
     // Config values
+    private boolean enabled;
     private String localPrefix;
     private String spyPrefix;
     private String chatFormat;
@@ -48,11 +49,19 @@ public class LocalChatListener implements Listener, CommandExecutor {
     }
 
     public void loadConfig() {
+        enabled = plugin.getConfig().getBoolean("localchat.enabled", true);
         localPrefix = plugin.getConfig().getString("localchat.prefix", "&e[&6LocalChat&e]");
         spyPrefix = plugin.getConfig().getString("localchat.spy-prefix", "&6[LocalSpy]");
         chatFormat = plugin.getConfig().getString("localchat.format", "&f{player} &8: &7{message}");
         chatRadius = plugin.getConfig().getDouble("localchat.radius", 20.0);
         chatRadiusSquared = chatRadius * chatRadius; // Pre-calculate for performance
+    }
+
+    /**
+     * Check if local chat module is enabled
+     */
+    public boolean isEnabled() {
+        return enabled;
     }
 
     /**
@@ -66,6 +75,13 @@ public class LocalChatListener implements Listener, CommandExecutor {
         }
 
         Player player = (Player) sender;
+
+        // Check if module is enabled
+        if (!enabled) {
+            player.sendMessage("§cLocal chat is currently disabled!");
+            return true;
+        }
+
         String cmdName = command.getName().toLowerCase();
 
         // Route to appropriate handler
@@ -131,6 +147,11 @@ public class LocalChatListener implements Listener, CommandExecutor {
      */
     @EventHandler(priority = EventPriority.LOW)
     public void onPlayerChat(AsyncChatEvent event) {
+        // Skip if module is disabled
+        if (!enabled) {
+            return;
+        }
+
         Player sender = event.getPlayer();
 
         // Skip if already cancelled by higher priority handler (e.g., StaffChat)

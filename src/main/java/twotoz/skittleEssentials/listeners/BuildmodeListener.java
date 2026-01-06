@@ -8,24 +8,25 @@ import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.Player;
+import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityPickupItemEvent;
+import org.bukkit.event.block.BlockDropItemEvent;
+import org.bukkit.event.entity.*;
+import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.hanging.HangingPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.player.*;
+import org.bukkit.event.vehicle.VehicleCreateEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.event.entity.EntityDamageEvent;
-
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.List;
 
@@ -33,7 +34,7 @@ public class BuildmodeListener implements Listener {
 
     private final SkittleEssentials plugin;
     private final BuildmodeManager buildmodeManager;
-    private List<String> blockedCommands;
+    private List<String> allowedCommands;
     private List<String> blockedBlocks;
 
     public BuildmodeListener(SkittleEssentials plugin, BuildmodeManager buildmodeManager) {
@@ -43,7 +44,7 @@ public class BuildmodeListener implements Listener {
     }
 
     public void loadConfig() {
-        blockedCommands = plugin.getConfig().getStringList("buildmode.blocked-commands");
+        allowedCommands = plugin.getConfig().getStringList("buildmode.allowed-commands");
         blockedBlocks = plugin.getConfig().getStringList("buildmode.blocked-blocks");
     }
 
@@ -105,7 +106,7 @@ public class BuildmodeListener implements Listener {
         }
     }
 
-    // IMPROVED: Prevent middle-click (pick block) in creative mode - this copies NBT data and allows getting restricted items!
+    // CRITICAL: Prevent middle-click and ANY item with NBT data
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onCreativeInventoryAction(InventoryCreativeEvent event) {
         if (!(event.getWhoClicked() instanceof Player)) {
@@ -150,18 +151,32 @@ public class BuildmodeListener implements Listener {
                 return;
             }
 
-            // Block items with NBT data (from middle-clicking containers with items)
+            // CRITICAL: Block ALL items with ANY NBT data/metadata
             if (item.hasItemMeta()) {
+                ItemMeta meta = item.getItemMeta();
+
+                // Block if item has display name, lore, enchants, or any other metadata
+                if (meta.hasDisplayName() || meta.hasLore() || meta.hasEnchants() ||
+                        !meta.getItemFlags().isEmpty() || meta.isUnbreakable()) {
+                    event.setCancelled(true);
+                    player.sendMessage("§c§lBLOCKED! §cYou can't obtain items with NBT data in build mode!");
+                    plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to obtain item with NBT data: " + item.getType().name());
+                    return;
+                }
+            }
+
+            // CRITICAL: Block ALL shulker boxes (can transport items even as items)
+            if (isShulkerBox(item.getType())) {
                 event.setCancelled(true);
-                player.sendMessage("§c§lBLOCKED! §cYou can't obtain items with NBT data in build mode!");
-                plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to obtain item with NBT data");
+                player.sendMessage("§c§lBLOCKED! §cYou can't obtain shulker boxes in build mode!");
+                plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to obtain shulker box");
                 return;
             }
         }
     }
 
-    // Prevent interacting with ALL entities that could be exploited
-    @EventHandler(priority = EventPriority.HIGH)
+    // CRITICAL: Block entity interactions completely (armor stands, item frames, villagers, etc.)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         Player player = event.getPlayer();
 
@@ -169,29 +184,187 @@ public class BuildmodeListener implements Listener {
             return;
         }
 
-        // Block ALL entity interactions in buildmode to prevent ANY exploit
+        // Block ALL entity interactions to prevent exploits
         event.setCancelled(true);
         player.sendMessage("§cYou can't interact with entities while in build mode!");
 
-        // Log for debugging/monitoring
-        plugin.getLogger().info(player.getName() + " tried to interact with " +
-                event.getRightClicked().getType() + " in buildmode (blocked)");
+        // Log specific entity types for monitoring
+        plugin.getLogger().info("BLOCKED INTERACTION: " + player.getName() + " tried to interact with " +
+                event.getRightClicked().getType() + " in buildmode");
     }
 
-    // Prevent entity damage to block mob farms and entity killing exploits
+    // CRITICAL: Block placing armor stands, item frames, and other item-holding entities
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onHangingPlace(HangingPlaceEvent event) {
+        Player player = event.getPlayer();
+
+        if (player == null || !buildmodeManager.isInBuildmode(player)) {
+            return;
+        }
+
+        // Block placing item frames, paintings, etc.
+        event.setCancelled(true);
+        player.sendMessage("§cYou can't place " + event.getEntity().getType().name() + " in build mode!");
+        plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to place " + event.getEntity().getType().name());
+    }
+
+    // CRITICAL: Block breaking hanging entities (item frames, paintings) to prevent item drops
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onHangingBreak(HangingBreakByEntityEvent event) {
+        if (!(event.getRemover() instanceof Player)) {
+            return;
+        }
+
+        Player player = (Player) event.getRemover();
+
+        if (!buildmodeManager.isInBuildmode(player)) {
+            return;
+        }
+
+        // Block breaking item frames, paintings, etc.
+        event.setCancelled(true);
+        player.sendMessage("§cYou can't break " + event.getEntity().getType().name() + " in build mode!");
+        plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to break " + event.getEntity().getType().name());
+    }
+
+    // CRITICAL: Block spawning entities (armor stands, minecarts, boats, etc.)
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onEntitySpawn(EntitySpawnEvent event) {
+        // Check if a player in buildmode spawned this entity
+        if (event.getEntity() instanceof Player) {
+            return;
+        }
+
+        // Try to find the player who spawned this entity (within 5 blocks)
+        Entity entity = event.getEntity();
+
+        for (Entity nearby : entity.getNearbyEntities(5, 5, 5)) {
+            if (nearby instanceof Player) {
+                Player player = (Player) nearby;
+
+                if (buildmodeManager.isInBuildmode(player)) {
+                    // Block spawning entities that could hold items
+                    EntityType type = entity.getType();
+
+                    if (isItemHoldingEntity(type)) {
+                        event.setCancelled(true);
+                        player.sendMessage("§cYou can't spawn " + type.name() + " in build mode!");
+                        plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to spawn " + type.name());
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    // CRITICAL: Block placing armor stands specifically (they can hold items)
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onArmorStandPlace(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+
+        if (!buildmodeManager.isInBuildmode(player)) {
+            return;
+        }
+
+        ItemStack item = event.getItem();
+        if (item != null && item.getType() == Material.ARMOR_STAND) {
+            event.setCancelled(true);
+            player.sendMessage("§cYou can't place armor stands in build mode!");
+            plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to place armor stand");
+        }
+    }
+
+    // CRITICAL: Block vehicle creation (minecarts, boats can be used to transport items)
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onVehicleCreate(VehicleCreateEvent event) {
+        Vehicle vehicle = event.getVehicle();
+
+        // Check if a player in buildmode created this vehicle
+        for (Entity nearby : vehicle.getNearbyEntities(5, 5, 5)) {
+            if (nearby instanceof Player) {
+                Player player = (Player) nearby;
+
+                if (buildmodeManager.isInBuildmode(player)) {
+                    event.setCancelled(true);
+                    player.sendMessage("§cYou can't create vehicles in build mode!");
+                    plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to create " + vehicle.getType().name());
+                    return;
+                }
+            }
+        }
+    }
+
+    // CRITICAL: Prevent damaging/breaking entities (armor stands, item frames via punch, etc.)
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        // Check if attacker is a player in buildmode
+        if (event.getDamager() instanceof Player) {
+            Player attacker = (Player) event.getDamager();
+
+            if (buildmodeManager.isInBuildmode(attacker)) {
+                // Block ALL entity damage (prevents breaking armor stands, item frames, etc.)
+                event.setCancelled(true);
+
+                // Only send message for non-player entities
+                if (!(event.getEntity() instanceof Player)) {
+                    attacker.sendMessage("§cYou can't damage entities while in build mode!");
+                    plugin.getLogger().info("BLOCKED: " + attacker.getName() + " tried to damage " + event.getEntity().getType());
+                }
+                return;
+            }
+        }
+
+        // Check if victim is a player in buildmode
+        if (event.getEntity() instanceof Player) {
+            Player victim = (Player) event.getEntity();
+
+            if (buildmodeManager.isInBuildmode(victim)) {
+                event.setCancelled(true);
+
+                if (event.getDamager() instanceof Player) {
+                    Player attacker = (Player) event.getDamager();
+                    attacker.sendMessage("§cYou can't attack players in build mode!");
+                }
+            }
+        }
+    }
+
+    // Players in buildmode take no damage
     @EventHandler(priority = EventPriority.HIGH)
     public void onEntityDamage(EntityDamageEvent event) {
         if (event.getEntity() instanceof Player) {
             Player player = (Player) event.getEntity();
 
-            // Players in buildmode take no damage
             if (buildmodeManager.isInBuildmode(player)) {
                 event.setCancelled(true);
             }
         }
     }
 
-    // Prevent breaking containers with items, and block bedrock/restricted blocks
+    // CRITICAL: Prevent player death while in buildmode (extra safety layer)
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        Player player = event.getEntity();
+
+        if (buildmodeManager.isInBuildmode(player)) {
+            // Clear all drops to prevent ANY items from escaping
+            event.getDrops().clear();
+            event.setKeepInventory(false);
+
+            plugin.getLogger().warning("CRITICAL: " + player.getName() + " died in buildmode - all drops cleared!");
+
+            // Force clear inventory after respawn
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (player.isOnline()) {
+                    player.getInventory().clear();
+                    player.getInventory().setArmorContents(null);
+                    player.getInventory().setItemInOffHand(null);
+                }
+            }, 1L);
+        }
+    }
+
+    // CRITICAL: Prevent breaking containers with items, and block bedrock/restricted blocks
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
@@ -224,6 +397,13 @@ public class BuildmodeListener implements Listener {
             return;
         }
 
+        // CRITICAL: Always prevent breaking shulker boxes
+        if (isShulkerBox(type)) {
+            event.setCancelled(true);
+            player.sendMessage("§cYou can't break shulker boxes in build mode!");
+            return;
+        }
+
         // Check if block is a container
         if (isContainer(type)) {
             // Check if container is empty
@@ -242,10 +422,37 @@ public class BuildmodeListener implements Listener {
                 }
             }
         }
+
+        // CRITICAL: Check for item-holding blocks (lectern, jukebox, etc.)
+        if (isItemHoldingBlock(type)) {
+            event.setCancelled(true);
+            player.sendMessage("§cYou can't break this block type in build mode!");
+            plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to break item-holding block: " + type.name());
+        }
     }
 
-    // Prevent placing restricted blocks
-    @EventHandler(priority = EventPriority.HIGH)
+    // CRITICAL: Prevent ANY items from dropping when a buildmode player breaks a block
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onBlockDropItem(BlockDropItemEvent event) {
+        Player player = event.getPlayer();
+
+        if (!buildmodeManager.isInBuildmode(player)) {
+            return;
+        }
+
+        // Cancel ALL item drops from blocks broken by buildmode players
+        event.setCancelled(true);
+
+        // Log for security monitoring
+        if (!event.getItems().isEmpty()) {
+            plugin.getLogger().warning("CRITICAL: Prevented item drops from " + player.getName() +
+                    " breaking " + event.getBlockState().getType().name() +
+                    " (" + event.getItems().size() + " items would have dropped)");
+        }
+    }
+
+    // CRITICAL: Prevent placing restricted blocks and containers
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
 
@@ -274,6 +481,30 @@ public class BuildmodeListener implements Listener {
         if (isBlockedBlock(type)) {
             event.setCancelled(true);
             player.sendMessage("§cYou can't place this block type while in build mode!");
+            return;
+        }
+
+        // CRITICAL: Prevent placing ALL shulker boxes
+        if (isShulkerBox(type)) {
+            event.setCancelled(true);
+            player.sendMessage("§cYou can't place shulker boxes in build mode!");
+            plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to place shulker box");
+            return;
+        }
+
+        // CRITICAL: Prevent placing containers (they could contain items)
+        if (isContainer(type)) {
+            event.setCancelled(true);
+            player.sendMessage("§cYou can't place containers in build mode!");
+            plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to place container: " + type.name());
+            return;
+        }
+
+        // CRITICAL: Prevent placing item-holding blocks
+        if (isItemHoldingBlock(type)) {
+            event.setCancelled(true);
+            player.sendMessage("§cYou can't place this block type in build mode!");
+            plugin.getLogger().warning("BLOCKED: " + player.getName() + " tried to place item-holding block: " + type.name());
         }
     }
 
@@ -336,36 +567,7 @@ public class BuildmodeListener implements Listener {
         }
     }
 
-    // Prevent PvP
-    @EventHandler(priority = EventPriority.HIGH)
-    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        // Check if attacker is a player in buildmode
-        if (event.getDamager() instanceof Player) {
-            Player attacker = (Player) event.getDamager();
-
-            if (buildmodeManager.isInBuildmode(attacker)) {
-                event.setCancelled(true);
-                attacker.sendMessage("§cYou can't PvP while in build mode!");
-                return;
-            }
-        }
-
-        // Check if victim is a player in buildmode
-        if (event.getEntity() instanceof Player) {
-            Player victim = (Player) event.getEntity();
-
-            if (buildmodeManager.isInBuildmode(victim)) {
-                event.setCancelled(true);
-
-                if (event.getDamager() instanceof Player) {
-                    Player attacker = (Player) event.getDamager();
-                    attacker.sendMessage("§cYou can't attack players in build mode!");
-                }
-            }
-        }
-    }
-
-    // Block certain commands
+    // Block commands (allowlist system - only commands in the list are allowed)
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
         Player player = event.getPlayer();
@@ -377,33 +579,47 @@ public class BuildmodeListener implements Listener {
         String message = event.getMessage().toLowerCase();
         String command = message.split(" ")[0].substring(1); // Remove the /
 
-        // Check if command is blocked
-        for (String blockedCmd : blockedCommands) {
-            String blocked = blockedCmd.toLowerCase();
+        // Check if command is in the allowed list
+        boolean isAllowed = false;
+        for (String allowedCmd : allowedCommands) {
+            String allowed = allowedCmd.toLowerCase().replace("/", "");
 
-            // Check exact match or with /
-            if (command.equals(blocked) || command.equals(blocked.replace("/", ""))) {
-                event.setCancelled(true);
-                player.sendMessage("§cYou can't use this command in build mode!");
-                return;
+            // Check exact match
+            if (command.equals(allowed)) {
+                isAllowed = true;
+                break;
             }
+        }
+
+        // If command is not in allowlist, block it
+        if (!isAllowed) {
+            event.setCancelled(true);
+            player.sendMessage("§cYou can't use this command in build mode!");
+            plugin.getLogger().info("BLOCKED COMMAND: " + player.getName() + " tried to use /" + command + " in buildmode");
         }
     }
 
-    // CRITICAL: Force check gamemode when changing worlds to prevent exploits
-    @EventHandler(priority = EventPriority.MONITOR)
+    // CRITICAL: Always disable buildmode when changing worlds
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerChangedWorld(PlayerChangedWorldEvent event) {
         Player player = event.getPlayer();
 
         if (buildmodeManager.isInBuildmode(player)) {
-            plugin.getLogger().info(player.getName() + " changed worlds while in buildmode.");
+            plugin.getLogger().info(player.getName() + " changed worlds while in buildmode - force disabling.");
 
-            // Force them back to creative if they're not in creative anymore
-            if (player.getGameMode() != GameMode.CREATIVE) {
-                plugin.getLogger().warning("EXPLOIT ATTEMPT: " + player.getName() + " changed worlds and lost creative mode!");
-                plugin.getLogger().warning("Forcing back to creative mode...");
-                player.setGameMode(GameMode.CREATIVE);
-            }
+            // Clear inventory
+            player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
+            player.getInventory().setItemInOffHand(null);
+
+            // Set gamemode survival
+            player.setGameMode(GameMode.SURVIVAL);
+
+            // Remove from buildmode
+            buildmodeManager.removePlayer(player);
+
+            player.sendMessage("§c§l✗ Buildmode has been disabled!");
+            player.sendMessage("§7You changed worlds. Your inventory has been cleared.");
         }
     }
 
@@ -507,6 +723,62 @@ public class BuildmodeListener implements Listener {
             case BARRIER:
             case LIGHT:
             case BEDROCK:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    // Helper method to check if material is a shulker box
+    private boolean isShulkerBox(Material material) {
+        switch (material) {
+            case SHULKER_BOX:
+            case WHITE_SHULKER_BOX:
+            case ORANGE_SHULKER_BOX:
+            case MAGENTA_SHULKER_BOX:
+            case LIGHT_BLUE_SHULKER_BOX:
+            case YELLOW_SHULKER_BOX:
+            case LIME_SHULKER_BOX:
+            case PINK_SHULKER_BOX:
+            case GRAY_SHULKER_BOX:
+            case LIGHT_GRAY_SHULKER_BOX:
+            case CYAN_SHULKER_BOX:
+            case PURPLE_SHULKER_BOX:
+            case BLUE_SHULKER_BOX:
+            case BROWN_SHULKER_BOX:
+            case GREEN_SHULKER_BOX:
+            case RED_SHULKER_BOX:
+            case BLACK_SHULKER_BOX:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    // Helper method to check if block can hold items (lectern, jukebox, etc.)
+    private boolean isItemHoldingBlock(Material material) {
+        switch (material) {
+            case LECTERN:
+            case JUKEBOX:
+            case FLOWER_POT:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    // Helper method to check if entity type can hold items
+    private boolean isItemHoldingEntity(EntityType type) {
+        switch (type) {
+            case ARMOR_STAND:
+            case ITEM_FRAME:
+            case GLOW_ITEM_FRAME:
+            case MINECART:
+            case CHEST_MINECART:
+            case HOPPER_MINECART:
+            case FURNACE_MINECART:
+            case BOAT:
+            case CHEST_BOAT:
                 return true;
             default:
                 return false;

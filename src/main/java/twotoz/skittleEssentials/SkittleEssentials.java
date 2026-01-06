@@ -97,12 +97,16 @@ public final class SkittleEssentials extends JavaPlugin {
         getServer().getPluginManager().registerEvents(staffChatListener, this);
         getLogger().info("✅ Staff chat enabled!");
 
-        // Initialize Local Chat (needs JailbanManager to check regions)
-        localChatListener = new LocalChatListener(this, jailbanManager, staffChatListener);
-        getServer().getPluginManager().registerEvents(localChatListener, this);
-        getCommand("localchat").setExecutor(localChatListener);
-        getCommand("localchatspy").setExecutor(localChatListener);
-        getLogger().info("✅ Local chat enabled!");
+        // Initialize Local Chat if enabled (needs JailbanManager to check regions)
+        if (getConfig().getBoolean("localchat.enabled", true)) {
+            localChatListener = new LocalChatListener(this, jailbanManager, staffChatListener);
+            getServer().getPluginManager().registerEvents(localChatListener, this);
+            getCommand("localchat").setExecutor(localChatListener);
+            getCommand("localchatspy").setExecutor(localChatListener);
+            getLogger().info("✅ Local chat enabled!");
+        } else {
+            getLogger().info("⚠ Local chat disabled in config!");
+        }
 
         if (jailbanManager.isConfigured()) {
             // Load jailed players from data file
