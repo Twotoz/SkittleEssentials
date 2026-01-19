@@ -118,15 +118,21 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
 
         if (onlineTarget != null && onlineTarget.isOnline()) {
             // Player is online - teleport them (Folia-safe)
+            // Make variables effectively final for lambda
+            final Player finalTarget = onlineTarget;
+            final String finalReason = reason;
+            final double finalBail = bailAmount;
+            final String finalSender = senderName;
+
             if (isFolia) {
-                onlineTarget.getScheduler().run(plugin, (task) -> {
-                    onlineTarget.teleport(jailSpawn);
-                    sendJailNotification(onlineTarget, reason, bailAmount, senderName);
+                finalTarget.getScheduler().run(plugin, (task) -> {
+                    finalTarget.teleport(jailSpawn);
+                    sendJailNotification(finalTarget, finalReason, finalBail, finalSender);
                 }, null);
             } else {
                 Bukkit.getScheduler().runTask(plugin, () -> {
-                    onlineTarget.teleport(jailSpawn);
-                    sendJailNotification(onlineTarget, reason, bailAmount, senderName);
+                    finalTarget.teleport(jailSpawn);
+                    sendJailNotification(finalTarget, finalReason, finalBail, finalSender);
                 });
             }
 
