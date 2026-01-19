@@ -21,10 +21,19 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
 
     private final SkittleEssentials plugin;
     private final JailbanManager jailbanManager;
+    private boolean isFolia = false;
 
     public JailbanCommand(SkittleEssentials plugin, JailbanManager jailbanManager) {
         this.plugin = plugin;
         this.jailbanManager = jailbanManager;
+
+        // Detect Folia
+        try {
+            Class.forName("io.papermc.paper.threadedregions.scheduler.AsyncScheduler");
+            isFolia = true;
+        } catch (ClassNotFoundException e) {
+            isFolia = false;
+        }
     }
 
     @Override
@@ -59,11 +68,9 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
 
         String targetName = args[0];
 
-        // Try to get OfflinePlayer (works for both online and offline players)
         @SuppressWarnings("deprecation")
         OfflinePlayer offlineTarget = Bukkit.getOfflinePlayer(targetName);
 
-        // Check if player has ever played on the server
         if (!offlineTarget.hasPlayedBefore() && !offlineTarget.isOnline()) {
             sender.sendMessage("§cPlayer not found! They have never played on this server.");
             return true;
@@ -72,13 +79,11 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
         UUID targetUUID = offlineTarget.getUniqueId();
         String targetDisplayName = offlineTarget.getName() != null ? offlineTarget.getName() : targetName;
 
-        // Check if already jailed
         if (jailbanManager.isJailbanned(targetUUID)) {
             sender.sendMessage("§c" + targetDisplayName + " is already jailed!");
             return true;
         }
 
-        // Parse bail amount
         double bailAmount;
         try {
             bailAmount = Double.parseDouble(args[1]);
@@ -91,7 +96,6 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // Build reason
         String reason = "No reason given";
         if (args.length > 2) {
             StringBuilder reasonBuilder = new StringBuilder();
@@ -101,33 +105,33 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
             reason = reasonBuilder.toString().trim();
         }
 
-        // Check if jail spawn is configured
         Location jailSpawn = jailbanManager.getJailSpawn();
         if (jailSpawn == null) {
             sender.sendMessage("§cJail spawn is not properly configured!");
             return true;
         }
 
-        // Jailban the player (works for offline players too)
         jailbanManager.jailban(targetUUID, reason, bailAmount);
 
-        // Messages
         String senderName = sender instanceof Player ? sender.getName() : "Console";
-
-        // If player is online, teleport them and send message
         Player onlineTarget = offlineTarget.getPlayer();
+
         if (onlineTarget != null && onlineTarget.isOnline()) {
-            onlineTarget.teleport(jailSpawn);
-            onlineTarget.sendMessage("§c§l⚖ You have been jailed!");
-            onlineTarget.sendMessage("§7Reason: §e" + reason);
-            onlineTarget.sendMessage("§7Bail Amount: §a$" + String.format("%.2f", bailAmount));
-            onlineTarget.sendMessage("§7By: §e" + senderName);
-            onlineTarget.sendMessage("§7");
-            onlineTarget.sendMessage("§7Kill mobs to earn money and use §e/bail §7to check your progress!");
+            // Player is online - teleport them (Folia-safe)
+            if (isFolia) {
+                onlineTarget.getScheduler().run(plugin, (task) -> {
+                    onlineTarget.teleport(jailSpawn);
+                    sendJailNotification(onlineTarget, reason, bailAmount, senderName);
+                }, null);
+            } else {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    onlineTarget.teleport(jailSpawn);
+                    sendJailNotification(onlineTarget, reason, bailAmount, senderName);
+                });
+            }
 
             sender.sendMessage("§a§l✓ " + targetDisplayName + " has been jailed!");
         } else {
-            // Player is offline
             sender.sendMessage("§a§l✓ " + targetDisplayName + " has been jailed!");
             sender.sendMessage("§7They are offline and will be teleported to jail when they join.");
         }
@@ -146,6 +150,15 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private void sendJailNotification(Player player, String reason, double bailAmount, String senderName) {
+        player.sendMessage("§c§l⚖ You have been jailed!");
+        player.sendMessage("§7Reason: §e" + reason);
+        player.sendMessage("§7Bail Amount: §a$" + String.format("%.2f", bailAmount));
+        player.sendMessage("§7By: §e" + senderName);
+        player.sendMessage("§7");
+        player.sendMessage("§7Kill mobs to earn money and use §e/bail §7to check your progress!");
+    }
+
     private boolean handleUnjailban(CommandSender sender, String[] args) {
         if (!sender.hasPermission("skittle.jailban")) {
             sender.sendMessage("§cYou don't have permission to use this command!");
@@ -159,11 +172,9 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
 
         String targetName = args[0];
 
-        // Try to get OfflinePlayer (works for both online and offline players)
         @SuppressWarnings("deprecation")
         OfflinePlayer offlineTarget = Bukkit.getOfflinePlayer(targetName);
 
-        // Check if player has ever played on the server
         if (!offlineTarget.hasPlayedBefore() && !offlineTarget.isOnline()) {
             sender.sendMessage("§cPlayer not found! They have never played on this server.");
             return true;
@@ -172,31 +183,25 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
         UUID targetUUID = offlineTarget.getUniqueId();
         String targetDisplayName = offlineTarget.getName() != null ? offlineTarget.getName() : targetName;
 
-        // Check if jailed
         if (!jailbanManager.isJailbanned(targetUUID)) {
             sender.sendMessage("§c" + targetDisplayName + " is not jailed!");
             return true;
         }
 
-        // Unjail the player (stays at current location)
         jailbanManager.unjailban(targetUUID);
 
-        // Messages
         String senderName = sender instanceof Player ? sender.getName() : "Console";
-
-        // If player is online, send message
         Player onlineTarget = offlineTarget.getPlayer();
+
         if (onlineTarget != null && onlineTarget.isOnline()) {
             onlineTarget.sendMessage("§a§l✓ You have been released from jail!");
             onlineTarget.sendMessage("§7By: §e" + senderName);
             sender.sendMessage("§a§l✓ " + targetDisplayName + " has been released from jail!");
         } else {
-            // Player is offline
             sender.sendMessage("§a§l✓ " + targetDisplayName + " has been released from jail!");
             sender.sendMessage("§7They are offline and will be notified when they join.");
         }
 
-        // Broadcast to staff
         for (Player staff : Bukkit.getOnlinePlayers()) {
             if (staff.hasPermission("skittle.jailban.notify") && !staff.equals(sender)) {
                 String status = onlineTarget != null ? "online" : "offline";
@@ -284,12 +289,10 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        // If no args, show balance
         if (args.length == 0) {
             return handleJailbal(sender);
         }
 
-        // If confirm, try to bail out
         if (args[0].equalsIgnoreCase("confirm")) {
             if (!jailbanManager.canAffordBail(player)) {
                 double current = jailbanManager.getCurrentBalance(player);
@@ -299,13 +302,11 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
 
-            // Bail out!
             jailbanManager.bailOut(player);
 
             player.sendMessage("§a§l✓ You have been released from jail!");
             player.sendMessage("§7You paid your bail and are now free!");
 
-            // Broadcast to staff
             for (Player staff : Bukkit.getOnlinePlayers()) {
                 if (staff.hasPermission("skittle.jailban.notify") && !staff.equals(player)) {
                     staff.sendMessage("§7[§a✓§7] " + player.getName() + " bailed themselves out of jail!");
@@ -329,21 +330,18 @@ public class JailbanCommand implements CommandExecutor, TabCompleter {
 
         if (command.getName().equalsIgnoreCase("jailban")) {
             if (args.length == 1) {
-                // Suggest online players
                 return Bukkit.getOnlinePlayers().stream()
                         .map(Player::getName)
                         .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))
                         .collect(Collectors.toList());
             } else if (args.length == 2) {
-                // Suggest bail amounts
                 return Arrays.asList("100", "250", "500", "1000", "2500")
                         .stream()
                         .filter(d -> d.startsWith(args[1]))
                         .collect(Collectors.toList());
             }
-        } else if (command.getName().equalsIgnoreCase("unjailban")) { // FIXED: Was "unjail"
+        } else if (command.getName().equalsIgnoreCase("unjailban")) {
             if (args.length == 1) {
-                // Suggest online players
                 return Bukkit.getOnlinePlayers().stream()
                         .map(Player::getName)
                         .filter(name -> name.toLowerCase().startsWith(args[0].toLowerCase()))

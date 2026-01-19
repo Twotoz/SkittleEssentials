@@ -26,6 +26,7 @@ public class JailbanListener implements Listener, CommandExecutor {
     private final SkittleEssentials plugin;
     private final JailbanManager jailbanManager;
     private final StaffChatListener staffChatListener;
+    private boolean isFolia = false;
 
     // Track last block position to avoid checking every tiny movement - Thread-safe
     private final Map<UUID, Location> lastBlockPosition = new ConcurrentHashMap<>();
@@ -41,6 +42,14 @@ public class JailbanListener implements Listener, CommandExecutor {
         this.plugin = plugin;
         this.jailbanManager = jailbanManager;
         this.staffChatListener = staffChatListener;
+
+        // Detect Folia
+        try {
+            Class.forName("io.papermc.paper.threadedregions.scheduler.AsyncScheduler");
+            isFolia = true;
+        } catch (ClassNotFoundException e) {
+            isFolia = false;
+        }
     }
 
     /**
@@ -165,9 +174,9 @@ public class JailbanListener implements Listener, CommandExecutor {
     }
 
     /**
-     * Handle jail chat system
+     * Handle jail chat system - Folia-safe
      */
-    @SuppressWarnings("deprecation") // Using AsyncPlayerChatEvent for compatibility
+    @SuppressWarnings("deprecation")
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player sender = event.getPlayer();
@@ -175,29 +184,24 @@ public class JailbanListener implements Listener, CommandExecutor {
 
         // Skip jail chat if player is using staff chat
         if (sender.hasPermission("skittle.staffchat")) {
-            // Check for ! prefix
             if (message.startsWith("!")) {
-                return; // Let StaffChatListener handle it
+                return;
             }
 
-            // Check for staff chat toggle (if StaffChatListener is available)
             if (staffChatListener != null && staffChatListener.hasStaffChatToggle(sender)) {
-                return; // Let StaffChatListener handle it
+                return;
             }
         }
 
-        // Check if sender is in jail region OR jailbanned
         boolean senderInJail = jailbanManager.isInJailRegion(sender.getLocation());
         boolean senderJailbanned = jailbanManager.isJailbanned(sender);
 
-        // --- IF SENDER IS IN JAIL (PRISONER CHAT) ---
+        // IF SENDER IS IN JAIL (PRISONER CHAT)
         if (senderInJail || senderJailbanned) {
             event.setCancelled(true);
 
-            // Send jail message manually to control recipients (Spy logic)
-            plugin.getServer().getScheduler().runTask(plugin, () -> {
-
-                // Get config values
+            // Schedule on appropriate scheduler (Folia-safe)
+            Runnable chatTask = () -> {
                 ConfigurationSection chatSection = plugin.getConfig().getConfigurationSection("jailban.chat");
                 String prefix = chatSection != null ? chatSection.getString("prefix", "&7[&cJail&7]") : "&7[&cJail&7]";
                 String format = chatSection != null ? chatSection.getString("format", "&f{player} &8» &7{message}") : "&f{player} &8» &7{message}";
@@ -207,7 +211,6 @@ public class JailbanListener implements Listener, CommandExecutor {
                         .replace("{player}", sender.getName())
                         .replace("{message}", message);
 
-                // Log to console
                 plugin.getLogger().info("[JailChat] " + sender.getName() + ": " + message);
 
                 for (Player recipient : Bukkit.getOnlinePlayers()) {
@@ -215,55 +218,66 @@ public class JailbanListener implements Listener, CommandExecutor {
                     boolean isRecipientInJail = jailbanManager.isInJailRegion(recipient.getLocation());
                     boolean hasSpy = recipient.hasPermission("skittle.jailban.spy") && jailSpyToggle.getOrDefault(recipient.getUniqueId(), false);
 
-                    // Send to:
-                    // 1. Other jailed players
-                    // 2. Players inside the jail region
-                    // 3. Staff with Spy enabled
                     if (isRecipientJailbanned || isRecipientInJail || hasSpy) {
                         recipient.sendMessage(formattedMessage);
                     }
                 }
-            });
+            };
+
+            if (isFolia) {
+                // Folia: Use global region scheduler for chat broadcast
+                Bukkit.getGlobalRegionScheduler().run(plugin, (task) -> chatTask.run());
+            } else {
+                // Paper: Use traditional scheduler
+                Bukkit.getScheduler().runTask(plugin, chatTask);
+            }
 
             return;
         }
 
-        // --- IF SENDER IS NOT IN JAIL (NORMAL CHAT) ---
-        // Remove jailed players from seeing global chat
+        // IF SENDER IS NOT IN JAIL (NORMAL CHAT)
         event.getRecipients().removeIf(recipient -> {
-            // Keep staff (they can see global chat obviously)
-            // But strict notify permission is not for viewing global chat, just normal chat.
-            // We just ensure prisoners don't see it.
-
-            // Remove if jailbanned or in jail region (Prisoners shouldn't see outside world chat)
             return jailbanManager.isJailbanned(recipient) ||
                     jailbanManager.isInJailRegion(recipient.getLocation());
         });
     }
 
     /**
-     * Teleport jailed players to jail on join
+     * Teleport jailed players to jail on join - Folia-safe
      */
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
         if (jailbanManager.isJailbanned(player)) {
-            // Teleport to jail spawn
             Location jailSpawn = jailbanManager.getJailSpawn();
             if (jailSpawn != null) {
-                player.teleport(jailSpawn);
+                if (isFolia) {
+                    // Folia: Schedule teleport on player's region
+                    player.getScheduler().run(plugin, (task) -> {
+                        player.teleport(jailSpawn);
+                        sendJailWelcomeMessage(player);
+                    }, null);
+                } else {
+                    // Paper: Direct teleport
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        player.teleport(jailSpawn);
+                        sendJailWelcomeMessage(player);
+                    });
+                }
             }
-
-            double current = jailbanManager.getCurrentBalance(player);
-            double required = jailbanManager.getBailRequired(player);
-
-            player.sendMessage("§c§l⚖ You are in jail!");
-            player.sendMessage("§7Reason: §e" + jailbanManager.getJailReason(player));
-            player.sendMessage("§7Bail Required: §e$" + String.format("%.2f", required));
-            player.sendMessage("§7Current Balance: §a$" + String.format("%.2f", current));
-            player.sendMessage("§7Kill mobs to earn money! Use §e/jailbal §7to check progress.");
         }
+    }
+
+    private void sendJailWelcomeMessage(Player player) {
+        double current = jailbanManager.getCurrentBalance(player);
+        double required = jailbanManager.getBailRequired(player);
+
+        player.sendMessage("§c§l⚖ You are in jail!");
+        player.sendMessage("§7Reason: §e" + jailbanManager.getJailReason(player));
+        player.sendMessage("§7Bail Required: §e$" + String.format("%.2f", required));
+        player.sendMessage("§7Current Balance: §a$" + String.format("%.2f", current));
+        player.sendMessage("§7Kill mobs to earn money! Use §e/jailbal §7to check progress.");
     }
 
     /**
@@ -315,10 +329,8 @@ public class JailbanListener implements Listener, CommandExecutor {
             return;
         }
 
-        // Check config for blocked interactions
         if (plugin.getConfig().getBoolean("jailban.block-interactions", true)) {
             if (event.getClickedBlock() != null) {
-                // Allow walking but block certain interactions
                 switch (event.getClickedBlock().getType()) {
                     case CHEST:
                     case TRAPPED_CHEST:
@@ -345,32 +357,26 @@ public class JailbanListener implements Listener, CommandExecutor {
         LivingEntity entity = event.getEntity();
         Player killer = entity.getKiller();
 
-        // Check if killed by a player
         if (killer == null) {
             return;
         }
 
-        // Check if killer is jailbanned
         if (!jailbanManager.isJailbanned(killer)) {
             return;
         }
 
-        // Don't give money for killing other players
         if (entity instanceof Player) {
             return;
         }
 
-        // Give $1 per mob kill
         double earnAmount = 1.0;
         jailbanManager.addBalance(killer, earnAmount);
 
         double current = jailbanManager.getCurrentBalance(killer);
         double required = jailbanManager.getBailRequired(killer);
 
-        // Send message to player
         killer.sendMessage("§a+$" + String.format("%.2f", earnAmount) + " §7(§a$" + String.format("%.2f", current) + "§7/§e$" + String.format("%.2f", required) + "§7)");
 
-        // Check if they can now bail out
         if (jailbanManager.canAffordBail(killer)) {
             killer.sendMessage("§a§l✓ You have enough money to bail out! Use §e/bail confirm");
         }

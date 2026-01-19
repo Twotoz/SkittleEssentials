@@ -1,25 +1,25 @@
 package twotoz.skittleEssentials.managers;
 
-
 import twotoz.skittleEssentials.SkittleEssentials;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class JailVoteManager {
 
     private final SkittleEssentials plugin;
     private final JailbanManager jailbanManager;
+    private boolean isFolia = false;
 
     // Active vote state
     private volatile boolean voteActive = false;
     private UUID voteStarter;
     private long voteStartTime;
-    private BukkitTask voteTask;
+    private Object voteTask; // Can be BukkitTask or ScheduledTask
 
     // Vote tracking: voter UUID -> voted player name - Thread-safe
     private final Map<UUID, String> votes = new ConcurrentHashMap<>();
@@ -32,6 +32,15 @@ public class JailVoteManager {
     public JailVoteManager(SkittleEssentials plugin, JailbanManager jailbanManager) {
         this.plugin = plugin;
         this.jailbanManager = jailbanManager;
+
+        // Detect Folia
+        try {
+            Class.forName("io.papermc.paper.threadedregions.scheduler.AsyncScheduler");
+            isFolia = true;
+        } catch (ClassNotFoundException e) {
+            isFolia = false;
+        }
+
         loadConfig();
     }
 
@@ -68,17 +77,26 @@ public class JailVoteManager {
         votes.clear();
 
         // Broadcast to all players
-        broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         broadcastToAll("§c§l⚖ JAIL VOTE STARTED!");
         broadcastToAll("§7Started by: §e" + starter.getName());
         broadcastToAll("§7Duration: §e" + voteDuration + " seconds");
         broadcastToAll("");
         broadcastToAll("§eVote for who should go to jail:");
         broadcastToAll("§7Use: §f/jailvote <player>");
-        broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-        // Schedule vote end
-        voteTask = Bukkit.getScheduler().runTaskLater(plugin, this::endVote, voteDuration * 20L);
+        // Schedule vote end (Folia-safe)
+        if (isFolia) {
+            // Folia: Use global region scheduler with delay
+            long delayMillis = voteDuration * 1000L;
+            voteTask = Bukkit.getGlobalRegionScheduler().runDelayed(plugin, (task) -> {
+                endVote();
+            }, delayMillis / 50); // Convert ms to ticks (50ms per tick)
+        } else {
+            // Paper: Traditional scheduler
+            voteTask = Bukkit.getScheduler().runTaskLater(plugin, this::endVote, voteDuration * 20L);
+        }
     }
 
     public void vote(Player voter, String targetName) {
@@ -92,14 +110,12 @@ public class JailVoteManager {
             return;
         }
 
-        // Check if target exists (can be offline)
         Player target = Bukkit.getPlayer(targetName);
         String finalTargetName;
 
         if (target != null) {
             finalTargetName = target.getName();
         } else {
-            // Try offline player
             if (Bukkit.getOfflinePlayer(targetName).hasPlayedBefore()) {
                 finalTargetName = Bukkit.getOfflinePlayer(targetName).getName();
             } else {
@@ -108,11 +124,9 @@ public class JailVoteManager {
             }
         }
 
-        // Record vote
         votes.put(voter.getUniqueId(), finalTargetName);
         voter.sendMessage("§a§l✓ You voted to jail: §e" + finalTargetName);
 
-        // Broadcast vote count update
         int voteCount = getVoteCount(finalTargetName);
         broadcastToAll("§7[§c⚖§7] §e" + voter.getName() + " §7voted to jail §c" + finalTargetName + " §7(§e" + voteCount + " votes§7)");
     }
@@ -134,22 +148,19 @@ public class JailVoteManager {
 
         voteActive = false;
 
-        // Count votes
         Map<String, Integer> voteCounts = new HashMap<>();
         for (String playerName : votes.values()) {
             voteCounts.put(playerName, voteCounts.getOrDefault(playerName, 0) + 1);
         }
 
-        // Check if there are any votes
         if (voteCounts.isEmpty()) {
-            broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             broadcastToAll("§c§l⚖ JAIL VOTE ENDED!");
             broadcastToAll("§7No votes were cast.");
-            broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+            broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             return;
         }
 
-        // Find winner (most votes)
         String winner = null;
         int maxVotes = 0;
         for (Map.Entry<String, Integer> entry : voteCounts.entrySet()) {
@@ -164,13 +175,12 @@ public class JailVoteManager {
             return;
         }
 
-        broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         broadcastToAll("§c§l⚖ JAIL VOTE RESULTS!");
         broadcastToAll("§7Total voters: §e" + votes.size());
         broadcastToAll("");
         broadcastToAll("§c§l➤ Winner: §e" + winner + " §7(§c" + maxVotes + " votes§7)");
 
-        // Show top 3
         List<Map.Entry<String, Integer>> sortedVotes = new ArrayList<>(voteCounts.entrySet());
         sortedVotes.sort((a, b) -> b.getValue().compareTo(a.getValue()));
 
@@ -184,30 +194,37 @@ public class JailVoteManager {
             position++;
         }
 
-        // Get the winner as OfflinePlayer to support offline jailing
         @SuppressWarnings("deprecation")
         OfflinePlayer offlineWinner = Bukkit.getOfflinePlayer(winner);
         UUID winnerUUID = offlineWinner.getUniqueId();
         Player targetPlayer = offlineWinner.getPlayer();
 
-        // Check if already jailed
         if (jailbanManager.isJailbanned(winnerUUID)) {
             broadcastToAll("");
             broadcastToAll("§c" + winner + " is already in jail!");
         } else {
-            // Jail the winner (works for both online and offline players)
             jailbanManager.jailban(winnerUUID, "Voted into jail by the community", jailBailAmount);
 
             if (targetPlayer != null && targetPlayer.isOnline()) {
-                // Player is online - teleport them immediately
-                if (jailbanManager.getJailSpawn() != null) {
-                    targetPlayer.teleport(jailbanManager.getJailSpawn());
+                // Player is online - teleport them (Folia-safe)
+                if (isFolia) {
+                    targetPlayer.getScheduler().run(plugin, (task) -> {
+                        if (jailbanManager.getJailSpawn() != null) {
+                            targetPlayer.teleport(jailbanManager.getJailSpawn());
+                        }
+                    }, null);
+                } else {
+                    Bukkit.getScheduler().runTask(plugin, () -> {
+                        if (jailbanManager.getJailSpawn() != null) {
+                            targetPlayer.teleport(jailbanManager.getJailSpawn());
+                        }
+                    });
                 }
+
                 broadcastToAll("");
                 broadcastToAll("§a§l✓ " + winner + " has been sent to jail!");
                 broadcastToAll("§7Bail Amount: §a$" + String.format("%.2f", jailBailAmount));
             } else {
-                // Player is offline - they will be jailed when they join
                 broadcastToAll("");
                 broadcastToAll("§a§l✓ " + winner + " has been jailed!");
                 broadcastToAll("§7They are offline and will be teleported to jail when they join.");
@@ -215,20 +232,32 @@ public class JailVoteManager {
             }
         }
 
-        broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        broadcastToAll("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
         votes.clear();
     }
 
     public void cancelVote() {
         if (voteTask != null) {
-            voteTask.cancel();
+            if (isFolia) {
+                try {
+                    ((io.papermc.paper.threadedregions.scheduler.ScheduledTask) voteTask).cancel();
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to cancel Folia vote task: " + e.getMessage());
+                }
+            } else {
+                try {
+                    ((org.bukkit.scheduler.BukkitTask) voteTask).cancel();
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to cancel Bukkit vote task: " + e.getMessage());
+                }
+            }
         }
         voteActive = false;
         votes.clear();
     }
 
-    @SuppressWarnings("deprecation") // Using legacy color codes for compatibility
+    @SuppressWarnings("deprecation")
     private void broadcastToAll(String message) {
         Bukkit.broadcastMessage(message);
     }

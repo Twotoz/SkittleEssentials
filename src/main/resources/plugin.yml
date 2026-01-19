@@ -4,7 +4,8 @@ main: twotoz.skittleEssentials.SkittleEssentials
 api-version: 1.20
 depend: [ProtocolLib, Vault, LuckPerms, Essentials]
 author: Twotoz
-description: A combination of essential server features
+folia-supported: true
+description: A combination of essential server features - FOLIA SUPPORT
 
 commands:
   sizer:

@@ -1,6 +1,5 @@
 package twotoz.skittleEssentials.managers;
 
-
 import twotoz.skittleEssentials.SkittleEssentials;
 import com.earth2me.essentials.Essentials;
 import com.earth2me.essentials.User;
@@ -9,19 +8,18 @@ import net.luckperms.api.model.group.GroupManager;
 import net.luckperms.api.model.user.UserManager;
 import net.luckperms.api.node.types.InheritanceNode;
 import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 public class BaltopRewardManager {
 
     private final SkittleEssentials plugin;
     private final Essentials essentials;
     private final LuckPerms luckPerms;
+    private boolean isFolia = false;
 
-    private BukkitTask checkTask;
+    private Object checkTask; // BukkitTask or ScheduledTask
 
     // Track current baltop holders
     private UUID currentRank1 = null;
@@ -39,6 +37,15 @@ public class BaltopRewardManager {
         this.plugin = plugin;
         this.essentials = essentials;
         this.luckPerms = luckPerms;
+
+        // Detect Folia
+        try {
+            Class.forName("io.papermc.paper.threadedregions.scheduler.AsyncScheduler");
+            isFolia = true;
+        } catch (ClassNotFoundException e) {
+            isFolia = false;
+        }
+
         loadConfig();
     }
 
@@ -49,7 +56,7 @@ public class BaltopRewardManager {
         rank2Group = plugin.getConfig().getString("baltop-rewards.rank-2-group", "baltop2");
         rank3Group = plugin.getConfig().getString("baltop-rewards.rank-3-group", "baltop3");
     }
-    
+
     /**
      * Restart the task (used during reload)
      */
@@ -62,7 +69,6 @@ public class BaltopRewardManager {
         GroupManager groupManager = luckPerms.getGroupManager();
         List<String> missingGroups = new ArrayList<>();
 
-        // Check all groups silently
         if (groupManager.getGroup(rank1Group) == null) {
             missingGroups.add(rank1Group);
         }
@@ -73,7 +79,6 @@ public class BaltopRewardManager {
             missingGroups.add(rank3Group);
         }
 
-        // Only log if there are missing groups (reduce spam)
         if (!missingGroups.isEmpty()) {
             plugin.getLogger().warning("[Baltop] Missing groups will be auto-created: " + String.join(", ", missingGroups));
         }
@@ -85,102 +90,118 @@ public class BaltopRewardManager {
             return;
         }
 
-        // Validate groups exist (silent)
         validateGroups();
 
-        // Initial check after 10 seconds (give server time to load)
-        Bukkit.getScheduler().runTaskLater(plugin, this::updateBaltopRewards, 200L);
+        // Initial check after 10 seconds (Folia-safe)
+        if (isFolia) {
+            Bukkit.getAsyncScheduler().runDelayed(plugin, (task) -> {
+                updateBaltopRewards();
+            }, 200L, TimeUnit.MILLISECONDS); // 200 * 50ms = 10 seconds
+        } else {
+            Bukkit.getScheduler().runTaskLater(plugin, this::updateBaltopRewards, 200L);
+        }
 
-        // Schedule periodic checks
-        long intervalTicks = checkIntervalMinutes * 60 * 20L;
-        checkTask = Bukkit.getScheduler().runTaskTimer(plugin, this::updateBaltopRewards, intervalTicks, intervalTicks);
+        // Schedule periodic checks (Folia-safe)
+        long intervalMs = checkIntervalMinutes * 60 * 1000L;
+
+        if (isFolia) {
+            checkTask = Bukkit.getAsyncScheduler().runAtFixedRate(plugin, (task) -> {
+                updateBaltopRewards();
+            }, intervalMs, intervalMs, TimeUnit.MILLISECONDS);
+        } else {
+            long intervalTicks = checkIntervalMinutes * 60 * 20L;
+            checkTask = Bukkit.getScheduler().runTaskTimer(plugin, this::updateBaltopRewards, intervalTicks, intervalTicks);
+        }
 
         plugin.getLogger().info("✅ Baltop rewards enabled! Checking every " + checkIntervalMinutes + " minutes");
     }
 
     public void stop() {
         if (checkTask != null) {
-            checkTask.cancel();
+            if (isFolia) {
+                try {
+                    ((io.papermc.paper.threadedregions.scheduler.ScheduledTask) checkTask).cancel();
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to cancel Folia baltop task: " + e.getMessage());
+                }
+            } else {
+                try {
+                    ((org.bukkit.scheduler.BukkitTask) checkTask).cancel();
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to cancel Bukkit baltop task: " + e.getMessage());
+                }
+            }
         }
     }
 
     private void updateBaltopRewards() {
-        // Run async to avoid lag
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try {
-                // Get top 3 from essentials
-                Map<UUID, Double> baltop = getTopBalances(3);
+        // Already async from scheduler
+        try {
+            Map<UUID, Double> baltop = getTopBalances(3);
 
-                if (baltop.isEmpty()) {
-                    // Silently skip if no data available
-                    return;
-                }
-
-                List<UUID> topPlayers = new ArrayList<>(baltop.keySet());
-
-                UUID newRank1 = topPlayers.size() > 0 ? topPlayers.get(0) : null;
-                UUID newRank2 = topPlayers.size() > 1 ? topPlayers.get(1) : null;
-                UUID newRank3 = topPlayers.size() > 2 ? topPlayers.get(2) : null;
-
-                boolean hasChanges = false;
-
-                // Update rank 1
-                if (!Objects.equals(currentRank1, newRank1)) {
-                    if (currentRank1 != null) {
-                        removeFromGroup(currentRank1, rank1Group);
-                    }
-                    if (newRank1 != null) {
-                        addToGroup(newRank1, rank1Group);
-                    }
-                    currentRank1 = newRank1;
-                    hasChanges = true;
-                }
-
-                // Update rank 2
-                if (!Objects.equals(currentRank2, newRank2)) {
-                    if (currentRank2 != null) {
-                        removeFromGroup(currentRank2, rank2Group);
-                    }
-                    if (newRank2 != null) {
-                        addToGroup(newRank2, rank2Group);
-                    }
-                    currentRank2 = newRank2;
-                    hasChanges = true;
-                }
-
-                // Update rank 3
-                if (!Objects.equals(currentRank3, newRank3)) {
-                    if (currentRank3 != null) {
-                        removeFromGroup(currentRank3, rank3Group);
-                    }
-                    if (newRank3 != null) {
-                        addToGroup(newRank3, rank3Group);
-                    }
-                    currentRank3 = newRank3;
-                    hasChanges = true;
-                }
-
-                // Only log if there were actual changes
-                if (hasChanges) {
-                    plugin.getLogger().info("Baltop permissions updated");
-                }
-
-            } catch (Exception e) {
-                // Silently handle errors to avoid console spam
-                plugin.getLogger().severe("[Baltop] Critical error: " + e.getMessage());
+            if (baltop.isEmpty()) {
+                return;
             }
-        });
+
+            List<UUID> topPlayers = new ArrayList<>(baltop.keySet());
+
+            UUID newRank1 = topPlayers.size() > 0 ? topPlayers.get(0) : null;
+            UUID newRank2 = topPlayers.size() > 1 ? topPlayers.get(1) : null;
+            UUID newRank3 = topPlayers.size() > 2 ? topPlayers.get(2) : null;
+
+            boolean hasChanges = false;
+
+            // Update rank 1
+            if (!Objects.equals(currentRank1, newRank1)) {
+                if (currentRank1 != null) {
+                    removeFromGroup(currentRank1, rank1Group);
+                }
+                if (newRank1 != null) {
+                    addToGroup(newRank1, rank1Group);
+                }
+                currentRank1 = newRank1;
+                hasChanges = true;
+            }
+
+            // Update rank 2
+            if (!Objects.equals(currentRank2, newRank2)) {
+                if (currentRank2 != null) {
+                    removeFromGroup(currentRank2, rank2Group);
+                }
+                if (newRank2 != null) {
+                    addToGroup(newRank2, rank2Group);
+                }
+                currentRank2 = newRank2;
+                hasChanges = true;
+            }
+
+            // Update rank 3
+            if (!Objects.equals(currentRank3, newRank3)) {
+                if (currentRank3 != null) {
+                    removeFromGroup(currentRank3, rank3Group);
+                }
+                if (newRank3 != null) {
+                    addToGroup(newRank3, rank3Group);
+                }
+                currentRank3 = newRank3;
+                hasChanges = true;
+            }
+
+            if (hasChanges) {
+                plugin.getLogger().info("Baltop permissions updated");
+            }
+
+        } catch (Exception e) {
+            plugin.getLogger().severe("[Baltop] Critical error: " + e.getMessage());
+        }
     }
 
-    @SuppressWarnings("deprecation") // getUserMap is deprecated but no alternative exists
+    @SuppressWarnings("deprecation")
     private Map<UUID, Double> getTopBalances(int amount) {
         Map<UUID, Double> balances = new LinkedHashMap<>();
 
         try {
-            // Get all users from Essentials
             Collection<UUID> allUsers = essentials.getUserMap().getAllUniqueUsers();
-
-            // Create a list of users with their balances
             List<Map.Entry<UUID, Double>> userBalances = new ArrayList<>();
 
             for (UUID uuid : allUsers) {
@@ -191,10 +212,8 @@ public class BaltopRewardManager {
                 }
             }
 
-            // Sort by balance descending
             userBalances.sort((a, b) -> Double.compare(b.getValue(), a.getValue()));
 
-            // Get top X
             for (int i = 0; i < Math.min(amount, userBalances.size()); i++) {
                 Map.Entry<UUID, Double> entry = userBalances.get(i);
                 balances.put(entry.getKey(), entry.getValue());
@@ -214,23 +233,19 @@ public class BaltopRewardManager {
 
         GroupManager groupManager = luckPerms.getGroupManager();
 
-        // Check if group exists
         if (groupManager.getGroup(groupName) != null) {
             return true;
         }
 
-        // Group doesn't exist - create it silently
         try {
             groupManager.createAndLoadGroup(groupName).thenAcceptAsync(group -> {
-                // Silently create group - no spam
+                // Silently create group
             }).exceptionally(throwable -> {
-                // Only log critical errors
                 plugin.getLogger().severe("[Baltop] Failed to create group: " + groupName);
                 return null;
             });
-            return true; // Assume it will be created
+            return true;
         } catch (Exception e) {
-            // Silently fail
             return false;
         }
     }
@@ -240,7 +255,6 @@ public class BaltopRewardManager {
             return;
         }
 
-        // Ensure the group exists first
         if (!ensureGroupExists(groupName)) {
             return;
         }
@@ -249,17 +263,14 @@ public class BaltopRewardManager {
 
         userManager.loadUser(playerId).thenAcceptAsync(user -> {
             if (user == null) {
-                // Silently skip if user can't be loaded
                 return;
             }
 
             InheritanceNode node = InheritanceNode.builder(groupName).build();
             if (user.data().add(node).wasSuccessful()) {
-                // Silently save
                 userManager.saveUser(user);
             }
         }).exceptionally(throwable -> {
-            // Silently handle errors
             return null;
         });
     }
@@ -269,10 +280,8 @@ public class BaltopRewardManager {
             return;
         }
 
-        // Check if group exists (but don't create it)
         GroupManager groupManager = luckPerms.getGroupManager();
         if (groupManager.getGroup(groupName) == null) {
-            // Silently skip if group doesn't exist
             return;
         }
 
@@ -280,17 +289,14 @@ public class BaltopRewardManager {
 
         userManager.loadUser(playerId).thenAcceptAsync(user -> {
             if (user == null) {
-                // Silently skip if user can't be loaded
                 return;
             }
 
             InheritanceNode node = InheritanceNode.builder(groupName).build();
             if (user.data().remove(node).wasSuccessful()) {
-                // Silently save
                 userManager.saveUser(user);
             }
         }).exceptionally(throwable -> {
-            // Silently handle errors
             return null;
         });
     }

@@ -37,8 +37,8 @@ repositories {
 }
 
 dependencies {
-    // Folia API (compatible with Paper)
-    compileOnly "dev.folia:folia-api:1.20.4-R0.1-SNAPSHOT"
+    // Paper API 1.21 (Folia compatible - Folia is a Paper fork)
+    compileOnly "io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT"
 
     // ProtocolLib
     compileOnly "com.comphenix.protocol:ProtocolLib:5.3.0"

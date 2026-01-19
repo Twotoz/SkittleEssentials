@@ -15,6 +15,7 @@ public class JailbanManager {
 
     private final SkittleEssentials plugin;
     private final JailDataManager jailDataManager;
+    private boolean isFolia = false;
 
     private Location pos1;
     private Location pos2;
@@ -32,6 +33,15 @@ public class JailbanManager {
     public JailbanManager(SkittleEssentials plugin, JailDataManager jailDataManager) {
         this.plugin = plugin;
         this.jailDataManager = jailDataManager;
+
+        // Detect Folia
+        try {
+            Class.forName("io.papermc.paper.threadedregions.scheduler.AsyncScheduler");
+            isFolia = true;
+        } catch (ClassNotFoundException e) {
+            isFolia = false;
+        }
+
         loadJailRegion();
     }
 
@@ -235,8 +245,21 @@ public class JailbanManager {
         return pos1 != null && pos2 != null && jailSpawn != null;
     }
 
+    /**
+     * Enforce jail bounds - Folia-safe teleport
+     */
     public void enforceJailBounds(Player player) {
-        if (jailSpawn != null) player.teleport(jailSpawn);
+        if (jailSpawn == null) return;
+
+        if (isFolia) {
+            // Folia: Schedule teleport on player's region
+            player.getScheduler().run(plugin, (task) -> {
+                player.teleport(jailSpawn);
+            }, null);
+        } else {
+            // Paper: Direct teleport is safe
+            player.teleport(jailSpawn);
+        }
     }
 
     public int getBoundaryCooldown() {
@@ -264,7 +287,6 @@ public class JailbanManager {
     public void loadJailedPlayersFromData() {
         jailbannedPlayers.clear();
 
-        // IMPORTANT: reload() returns void → never dereference
         jailDataManager.reload();
 
         Set<UUID> jailedUUIDs = jailDataManager.getAllJailedPlayers();
@@ -281,5 +303,9 @@ public class JailbanManager {
 
     public void clearAll() {
         jailbannedPlayers.clear();
+    }
+
+    public boolean isFolia() {
+        return isFolia;
     }
 }
