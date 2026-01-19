@@ -1,8 +1,8 @@
 package twotoz.skittleEssentials.commands;
 
-
 import twotoz.skittleEssentials.SkittleEssentials;
 import twotoz.skittleEssentials.managers.BuildmodeManager;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -17,13 +17,21 @@ public class BuildmodeCommand implements CommandExecutor, TabCompleter {
 
     private final SkittleEssentials plugin;
     private final BuildmodeManager buildmodeManager;
-    // Thread-safe map for confirmations
     private final Map<UUID, Long> pendingConfirmations = new ConcurrentHashMap<>();
     private static final long CONFIRMATION_TIMEOUT = 30000; // 30 seconds
+    private boolean isFolia = false;
 
     public BuildmodeCommand(SkittleEssentials plugin, BuildmodeManager buildmodeManager) {
         this.plugin = plugin;
         this.buildmodeManager = buildmodeManager;
+
+        // Detect Folia
+        try {
+            Class.forName("io.papermc.paper.threadedregions.scheduler.AsyncScheduler");
+            isFolia = true;
+        } catch (ClassNotFoundException e) {
+            isFolia = false;
+        }
     }
 
     @Override
@@ -106,9 +114,16 @@ public class BuildmodeCommand implements CommandExecutor, TabCompleter {
                 return;
             }
 
-            // Confirmation successful - activate buildmode
+            // Confirmation successful - schedule on player's region (Folia-safe)
             pendingConfirmations.remove(player.getUniqueId());
-            enableBuildmode(player);
+
+            if (isFolia) {
+                player.getScheduler().run(plugin, (task) -> {
+                    enableBuildmode(player);
+                }, null);
+            } else {
+                Bukkit.getScheduler().runTask(plugin, () -> enableBuildmode(player));
+            }
         } else {
             player.sendMessage("§cUsage: /buildmode on confirm");
         }
@@ -128,6 +143,7 @@ public class BuildmodeCommand implements CommandExecutor, TabCompleter {
 
         player.sendMessage("§a§l✓ Buildmode enabled!");
         player.sendMessage("§7Your inventory has been cleared and you are in creative mode.");
+        player.sendMessage("§c§lIMPORTANT: §7You cannot place/break containers or items with NBT data!");
         player.sendMessage("§7Use §e/buildmode off §7to deactivate.");
     }
 
@@ -137,6 +153,17 @@ public class BuildmodeCommand implements CommandExecutor, TabCompleter {
             return;
         }
 
+        // Schedule on player's region (Folia-safe)
+        if (isFolia) {
+            player.getScheduler().run(plugin, (task) -> {
+                disableBuildmode(player);
+            }, null);
+        } else {
+            Bukkit.getScheduler().runTask(plugin, () -> disableBuildmode(player));
+        }
+    }
+
+    private void disableBuildmode(Player player) {
         // Clear inventory
         player.getInventory().clear();
         player.getInventory().setArmorContents(null);

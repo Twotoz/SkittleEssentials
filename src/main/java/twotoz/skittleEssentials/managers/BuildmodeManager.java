@@ -1,24 +1,33 @@
 package twotoz.skittleEssentials.managers;
 
-
 import twotoz.skittleEssentials.SkittleEssentials;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class BuildmodeManager {
 
     private final SkittleEssentials plugin;
-    // Thread-safe collections
     private final Map<UUID, Long> buildmodePlayers = new ConcurrentHashMap<>();
-    private BukkitTask verificationTask;
+    private Object verificationTask;
+    private boolean isFolia = false;
 
     public BuildmodeManager(SkittleEssentials plugin) {
         this.plugin = plugin;
+
+        // Detect Folia
+        try {
+            Class.forName("io.papermc.paper.threadedregions.scheduler.AsyncScheduler");
+            isFolia = true;
+            plugin.getLogger().info("Folia detected - using regional scheduling");
+        } catch (ClassNotFoundException e) {
+            plugin.getLogger().info("Paper/Spigot detected - using legacy scheduling");
+        }
+
         startVerificationTask();
     }
 
@@ -41,36 +50,55 @@ public class BuildmodeManager {
     }
 
     /**
-     * Start periodic verification task to check if players in buildmode are still in creative
-     * Runs every second (20 ticks)
+     * Start periodic verification task - Folia-safe
      */
     private void startVerificationTask() {
-        verificationTask = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            // Create snapshot to avoid ConcurrentModificationException
-            Set<UUID> snapshot = new HashSet<>(buildmodePlayers.keySet());
-            
-            for (UUID uuid : snapshot) {
-                Player player = Bukkit.getPlayer(uuid);
+        if (isFolia) {
+            // Folia: Schedule global repeating task (1 second = 1000ms)
+            verificationTask = Bukkit.getAsyncScheduler().runAtFixedRate(plugin, (task) -> {
+                verifyAllPlayers();
+            }, 1000L, 1000L, TimeUnit.MILLISECONDS);
+        } else {
+            // Paper/Spigot: Traditional scheduler (20 ticks = 1 second)
+            verificationTask = Bukkit.getScheduler().runTaskTimer(plugin, this::verifyAllPlayers, 20L, 20L);
+        }
+    }
 
-                if (player == null || !player.isOnline()) {
-                    // Player is offline, will be handled by quit event
-                    continue;
-                }
+    private void verifyAllPlayers() {
+        Set<UUID> snapshot = new HashSet<>(buildmodePlayers.keySet());
 
-                // Check if player is still in creative mode
-                if (player.getGameMode() != GameMode.CREATIVE) {
-                    plugin.getLogger().warning("EXPLOIT DETECTED: " + player.getName() + " is in buildmode but not in creative mode!");
-                    plugin.getLogger().warning("Gamemode: " + player.getGameMode() + " - Force disabling buildmode");
+        for (UUID uuid : snapshot) {
+            Player player = Bukkit.getPlayer(uuid);
 
-                    // Force disable buildmode
-                    forceDisableBuildmode(player);
-                }
+            if (player == null || !player.isOnline()) {
+                continue;
             }
-        }, 20L, 20L); // Run every second (20 ticks delay, 20 ticks period)
+
+            // Schedule check on player's region (Folia-safe)
+            if (isFolia) {
+                player.getScheduler().run(plugin, (scheduledTask) -> {
+                    checkPlayerGamemode(player);
+                }, null);
+            } else {
+                // Paper: Run sync
+                Bukkit.getScheduler().runTask(plugin, () -> checkPlayerGamemode(player));
+            }
+        }
+    }
+
+    private void checkPlayerGamemode(Player player) {
+        if (player.getGameMode() != GameMode.CREATIVE) {
+            plugin.getLogger().warning("EXPLOIT DETECTED: " + player.getName() +
+                    " is in buildmode but not in creative mode!");
+            plugin.getLogger().warning("Gamemode: " + player.getGameMode() +
+                    " - Force disabling buildmode");
+
+            forceDisableBuildmode(player);
+        }
     }
 
     /**
-     * Force disable buildmode for a player (used when exploit detected)
+     * Force disable buildmode for a player (Folia-safe)
      */
     private void forceDisableBuildmode(Player player) {
         // Clear inventory
@@ -91,26 +119,50 @@ public class BuildmodeManager {
     }
 
     /**
-     * Stop the verification task (called on plugin disable)
+     * Stop the verification task (Folia-safe)
      */
     public void shutdown() {
         if (verificationTask != null) {
-            verificationTask.cancel();
+            if (isFolia) {
+                try {
+                    // Folia: Cancel scheduled task
+                    ((io.papermc.paper.threadedregions.scheduler.ScheduledTask) verificationTask).cancel();
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to cancel Folia task: " + e.getMessage());
+                }
+            } else {
+                // Paper/Spigot: Cancel BukkitTask
+                try {
+                    ((org.bukkit.scheduler.BukkitTask) verificationTask).cancel();
+                } catch (Exception e) {
+                    plugin.getLogger().warning("Failed to cancel Bukkit task: " + e.getMessage());
+                }
+            }
         }
 
         // Force disable buildmode for all online players
         for (UUID uuid : buildmodePlayers.keySet()) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null && player.isOnline()) {
-                player.getInventory().clear();
-                player.getInventory().setArmorContents(null);
-                player.getInventory().setItemInOffHand(null);
-                player.setGameMode(GameMode.SURVIVAL);
-                player.sendMessage("§c§l✗ Buildmode disabled (server reload/shutdown)");
+                if (isFolia) {
+                    player.getScheduler().run(plugin, (task) -> {
+                        disablePlayerBuildmode(player);
+                    }, null);
+                } else {
+                    Bukkit.getScheduler().runTask(plugin, () -> disablePlayerBuildmode(player));
+                }
             }
         }
 
         buildmodePlayers.clear();
+    }
+
+    private void disablePlayerBuildmode(Player player) {
+        player.getInventory().clear();
+        player.getInventory().setArmorContents(null);
+        player.getInventory().setItemInOffHand(null);
+        player.setGameMode(GameMode.SURVIVAL);
+        player.sendMessage("§c§l✗ Buildmode disabled (server reload/shutdown)");
     }
 
     /**
