@@ -1,6 +1,5 @@
 package twotoz.skittleEssentials;
 
-import com.earth2me.essentials.Essentials;
 import net.luckperms.api.LuckPerms;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Bukkit;
@@ -11,7 +10,6 @@ import org.bukkit.plugin.java.JavaPlugin;
 import twotoz.skittleEssentials.commands.*;
 import twotoz.skittleEssentials.listeners.*;
 import twotoz.skittleEssentials.managers.*;
-import twotoz.skittleEssentials.filters.*;
 
 public final class SkittleEssentials extends JavaPlugin {
 
@@ -25,12 +23,8 @@ public final class SkittleEssentials extends JavaPlugin {
     private StaffChatListener staffChatListener;
     private LocalChatListener localChatListener;
     private JailVoteManager jailVoteManager;
-    private BaltopRewardManager baltopRewardManager;
     private FakePlayersManager fakePlayersManager;
-    private NewPlayerFilter newPlayerFilter;
-    private NewPlayerFilterListener newPlayerFilterListener;
     private Economy economy;
-    private Essentials essentials;
     private LuckPerms luckPerms;
 
     @Override
@@ -45,27 +39,9 @@ public final class SkittleEssentials extends JavaPlugin {
             getLogger().info("✅ Economy system hooked!");
         }
 
-        // Setup Essentials
-        if (!setupEssentials()) {
-            getLogger().warning("⚠ Essentials not found! Baltop rewards will be disabled.");
-        } else {
-            getLogger().info("✅ Essentials hooked!");
-        }
-
-        // Setup NewPlayerFilter (Command Filter Only) - Requires Essentials
-        if (essentials != null) {
-            newPlayerFilter = new NewPlayerFilter(this, essentials);
-            newPlayerFilterListener = new NewPlayerFilterListener(this, newPlayerFilter);
-            getServer().getPluginManager().registerEvents(newPlayerFilterListener, this);
-
-            getLogger().info("✅ NewPlayerFilter (Command Blocker) loaded!");
-        } else {
-            getLogger().warning("⚠ NewPlayerFilter disabled - Essentials not available!");
-        }
-
-        // Setup LuckPerms
+        // Setup LuckPerms (optional - only for baltop if you add it later)
         if (!setupLuckPerms()) {
-            getLogger().warning("⚠ LuckPerms not found! Baltop rewards will be disabled.");
+            getLogger().info("⚠ LuckPerms not found - some features may be limited.");
         } else {
             getLogger().info("✅ LuckPerms hooked!");
         }
@@ -148,14 +124,6 @@ public final class SkittleEssentials extends JavaPlugin {
             getLogger().warning("⚠ Jailban region not properly configured!");
         }
 
-        // Setup Baltop Rewards
-        if (essentials != null && luckPerms != null) {
-            baltopRewardManager = new BaltopRewardManager(this, essentials, luckPerms);
-            baltopRewardManager.start();
-        } else {
-            getLogger().warning("⚠ Baltop rewards disabled - Essentials or LuckPerms not available!");
-        }
-
         // Setup Fake Players
         fakePlayersManager = new FakePlayersManager(this);
         fakePlayersManager.start();
@@ -175,15 +143,6 @@ public final class SkittleEssentials extends JavaPlugin {
 
         economy = rsp.getProvider();
         return economy != null;
-    }
-
-    private boolean setupEssentials() {
-        if (getServer().getPluginManager().getPlugin("Essentials") == null) {
-            return false;
-        }
-
-        essentials = (Essentials) getServer().getPluginManager().getPlugin("Essentials");
-        return essentials != null;
     }
 
     private boolean setupLuckPerms() {
@@ -227,17 +186,6 @@ public final class SkittleEssentials extends JavaPlugin {
             jailVoteManager.loadConfig();
         }
 
-        // Reload baltop rewards config and restart task
-        if (baltopRewardManager != null) {
-            baltopRewardManager.loadConfig();
-            baltopRewardManager.restart(); // Restart timer to apply new settings
-        }
-
-        // Reload new player filter config
-        if (newPlayerFilter != null) {
-            newPlayerFilter.loadConfig();
-        }
-
         // Reload fake players config
         if (fakePlayersManager != null) {
             fakePlayersManager.stop();
@@ -246,24 +194,12 @@ public final class SkittleEssentials extends JavaPlugin {
         }
     }
 
-    public BaltopRewardManager getBaltopRewardManager() {
-        return baltopRewardManager;
-    }
-
     public JailbanManager getJailbanManager() {
         return jailbanManager;
     }
 
     public FakePlayersManager getFakePlayersManager() {
         return fakePlayersManager;
-    }
-
-    public NewPlayerFilter getNewPlayerFilter() {
-        return newPlayerFilter;
-    }
-
-    public Essentials getEssentials() {
-        return essentials;
     }
 
     public static SkittleEssentials getInstance() {
@@ -286,12 +222,9 @@ public final class SkittleEssentials extends JavaPlugin {
         if (jailVoteManager != null) {
             jailVoteManager.cancelVote();
         }
-        if (baltopRewardManager != null) {
-            baltopRewardManager.stop();
-        }
         if (fakePlayersManager != null) {
             fakePlayersManager.stop();
         }
-        getLogger().info("❌ SkittleEssentials disabled.");
+        getLogger().info("⌛ SkittleEssentials disabled.");
     }
 }

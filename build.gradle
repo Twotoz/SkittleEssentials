@@ -46,11 +46,8 @@ dependencies {
     // Vault
     compileOnly "com.github.MilkBowl:VaultAPI:1.7"
 
-    // LuckPerms
+    // LuckPerms (optional - only needed for baltop rewards)
     compileOnly "net.luckperms:api:5.4"
-
-    // EssentialsX
-    compileOnly "net.essentialsx:EssentialsX:2.20.1"
 }
 
 tasks {

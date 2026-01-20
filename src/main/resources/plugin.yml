@@ -1,11 +1,12 @@
 name: SkittleEssentials
-version: 1.5.1
+version: 1.5.2
 main: twotoz.skittleEssentials.SkittleEssentials
 api-version: 1.20
-depend: [ProtocolLib, Vault, LuckPerms, Essentials]
-author: Twotoz
 folia-supported: true
-description: A combination of essential server features - FOLIA SUPPORT
+depend: [ProtocolLib, Vault]
+softdepend: [LuckPerms]
+author: Twotoz
+description: Essential server features with full Folia support - Regional scheduling, NBT dupe protection, and more!
 
 commands:
   sizer:

@@ -1,6 +1,6 @@
 # ╔══════════════════════════════════════════════════════════════╗
 # ║              SkittleEssentials Configuration                 ║
-# ║               Version 1.5.1 - FOLIA SUPPORT                  ║
+# ║               Version 1.5.2 - FOLIA SUPPORT                  ║
 # ╚══════════════════════════════════════════════════════════════╝
 
 # ┌─────────────────────────────────────────────────────────────┐
@@ -17,25 +17,6 @@ fake-players:
     - "Coz24"
     - "Twozy"
     - "Fex1"
-
-
-# ┌─────────────────────────────────────────────────────────────┐
-# │                 NEW PLAYER FILTER SYSTEM                    │
-# └─────────────────────────────────────────────────────────────┘
-# Block commands for players under a certain playtime
-new-player-filter:
-  enabled: true                           # Enable/disable new player filtering
-  playtime-threshold-hours: 3.0           # Minimum playtime hours before restrictions are lifted
-
-  # Commands that new players cannot use
-  # New players will see "No permission." without knowing it's temporary
-  # Supports both "command" (blocks all) and "command args" (blocks specific)
-  # Examples:
-  #   - "warp" = blocks ALL /warp commands
-  #   - "warp shop" = blocks ONLY /warp shop, allows /warp pvp etc.
-  blocked-commands:
-    - "warp shop"      # Block /warp shop specifically
-    - "ugaga"          # Block all /ugaga commands
 
 # ┌─────────────────────────────────────────────────────────────┐
 # │                    STAFF CHAT SYSTEM                        │

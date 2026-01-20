@@ -21,6 +21,7 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
 
@@ -30,7 +31,7 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
     private final Map<UUID, Double> originalJumpStrength = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitTask> activeShiftTasks = new ConcurrentHashMap<>();
     private final Map<UUID, Long> combatCooldown = new ConcurrentHashMap<>();
-    
+
     private static final long COOLDOWN_DURATION = 10_000L;
     private static final int SHIFT_RESET_TICKS = 5;
 
@@ -137,9 +138,9 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
     private void resetAndCooldown(Player player, String message) {
         // Check voor permanent size permission
         if (player.hasPermission("skittle.sizer.permanent")) {
-            return; // Skip reset voor spelers met permanent size permission
+            return; // Skip reset EN cooldown voor spelers met permanent size permission
         }
-        
+
         executeSync(() -> {
 
             double currentScale = 1.0;
@@ -153,11 +154,14 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
                 resetToDefaults(player);
                 player.sendMessage(message);
             }
-            
+
             updateOriginalJumpStrength(player);
 
             BukkitTask task = activeShiftTasks.remove(player.getUniqueId());
             if (task != null) task.cancel();
+
+            // Cooldown voor normale spelers
+            combatCooldown.put(player.getUniqueId(), System.currentTimeMillis());
         });
     }
 
@@ -167,13 +171,11 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
         if (!(event.getEntity() instanceof Player victim)) return;
         if (!(event.getDamager() instanceof Player attacker)) return;
 
-        long now = System.currentTimeMillis();
-
+        // Reset attacker (tenzij permanent permission)
         resetAndCooldown(attacker, "§cYour size was reset because you dealt damage!");
-        resetAndCooldown(victim,  "§cYour size was reset because you took damage!");
 
-        combatCooldown.put(attacker.getUniqueId(), now);
-        combatCooldown.put(victim.getUniqueId(), now);
+        // Reset victim (tenzij permanent permission)
+        resetAndCooldown(victim, "§cYour size was reset because you took damage!");
     }
 
     // =====================================================================
@@ -269,14 +271,47 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player p)) {
-            sender.sendMessage("§cPlayers only!");
-            return true;
+        // Console command: /sizer <player> <scale>
+        if (!(sender instanceof Player)) {
+            if (args.length != 2) {
+                sender.sendMessage("§cUsage: /sizer <player> <scale>");
+                return true;
+            }
+            Player target = Bukkit.getPlayerExact(args[0]);
+            if (target == null) {
+                sender.sendMessage("§cPlayer not found!");
+                return true;
+            }
+            return applyResizeConsole(sender, target, args[1]);
         }
+
+        // Player commands
+        Player p = (Player) sender;
         if (args.length == 1) return resizeSelf(p, args[0]);
         if (args.length == 2 && p.hasPermission("skittle.sizer.other")) return resizeOther(p, args[0], args[1]);
         p.sendMessage("§cUsage: /sizer <scale> or /sizer <player> <scale>");
         return true;
+    }
+
+    private boolean applyResizeConsole(CommandSender console, Player target, String scaleStr) {
+        try {
+            double scale = Double.parseDouble(scaleStr);
+            double min = plugin.getConfig().getDouble("sizer.op-min-scale", 0.01);
+            double max = plugin.getConfig().getDouble("sizer.op-max-scale", 25.0);
+
+            if (scale < min || scale > max) {
+                console.sendMessage(String.format("§cScale must be between %.2f and %.2f!", min, max));
+                return true;
+            }
+
+            executeSync(() -> applySizeEffect(target, scale));
+            console.sendMessage("§a" + target.getName() + "'s size was set to §e" + scale + "x");
+            target.sendMessage("§aYour size was changed to §e" + scale + "x §aby Console");
+            return true;
+        } catch (NumberFormatException e) {
+            console.sendMessage("§cInvalid number!");
+            return true;
+        }
     }
 
     private boolean resizeSelf(Player p, String s) {
@@ -284,7 +319,8 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
             p.sendMessage("§cNo permission!");
             return true;
         }
-        if (isOnCooldown(p)) {
+        // Permanent permission bypass cooldown check
+        if (!p.hasPermission("skittle.sizer.permanent") && isOnCooldown(p)) {
             p.sendMessage("§cWait " + getRemainingSeconds(p) + "s after combat!");
             return true;
         }
@@ -297,7 +333,8 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
             e.sendMessage("§cPlayer not found!");
             return true;
         }
-        if (isOnCooldown(t)) {
+        // Permanent permission bypass cooldown check
+        if (!t.hasPermission("skittle.sizer.permanent") && isOnCooldown(t)) {
             e.sendMessage("§c" + t.getName() + " is in combat cooldown!");
             return true;
         }
@@ -316,7 +353,55 @@ public class SizerCommand implements CommandExecutor, TabCompleter, Listener {
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender s, Command c, String a, String[] args) {
-        return new ArrayList<>();
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        List<String> completions = new ArrayList<>();
+
+        // Voor console: alleen spelers suggereren in arg 1
+        if (!(sender instanceof Player)) {
+            if (args.length == 1) {
+                String input = args[0].toLowerCase();
+                completions = Bukkit.getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(name -> name.toLowerCase().startsWith(input))
+                        .collect(Collectors.toList());
+            } else if (args.length == 2) {
+                completions.addAll(Arrays.asList("0.1", "0.5", "1.0", "1.5", "2.0"));
+            }
+            return completions;
+        }
+
+        Player player = (Player) sender;
+
+        // Voor spelers zonder other permission: alleen scale values
+        if (!player.hasPermission("skittle.sizer.other")) {
+            if (args.length == 1) {
+                completions.addAll(Arrays.asList("0.7", "0.8", "0.9", "1.0", "1.1", "1.2"));
+            }
+            return completions;
+        }
+
+        // Voor spelers met other permission
+        if (args.length == 1) {
+            String input = args[0].toLowerCase();
+
+            // Als input lijkt op een getal, suggereer scale values
+            if (input.isEmpty() || input.matches("^[0-9.]+$")) {
+                completions.addAll(Arrays.asList("0.1", "0.5", "1.0", "1.5", "2.0"));
+            }
+
+            // Voeg spelersnamen toe
+            completions.addAll(Bukkit.getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(name -> name.toLowerCase().startsWith(input))
+                    .collect(Collectors.toList()));
+
+        } else if (args.length == 2) {
+            // Als arg1 een speler is, suggereer scale values voor arg2
+            if (Bukkit.getPlayerExact(args[0]) != null) {
+                completions.addAll(Arrays.asList("0.1", "0.5", "1.0", "1.5", "2.0"));
+            }
+        }
+
+        return completions;
     }
 }

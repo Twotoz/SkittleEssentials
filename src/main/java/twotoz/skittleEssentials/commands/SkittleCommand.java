@@ -1,8 +1,6 @@
 package twotoz.skittleEssentials.commands;
 
 import twotoz.skittleEssentials.SkittleEssentials;
-import twotoz.skittleEssentials.filters.NewPlayerFilter;
-import twotoz.skittleEssentials.managers.BaltopRewardManager;
 import twotoz.skittleEssentials.managers.FakePlayersManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -26,7 +24,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-            sender.sendMessage("§e§l    SkittleEssentials v1.5.1");
+            sender.sendMessage("§e§l    SkittleEssentials v1.5.2");
             sender.sendMessage("§7        Created by: §eTwotoz");
             sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
             sender.sendMessage("");
@@ -37,9 +35,7 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§e▪ §7Jail Vote - Community voting system");
             sender.sendMessage("§e▪ §7Staff Chat - Private staff communication");
             sender.sendMessage("§e▪ §7Local Chat - Proximity chat with spy mode");
-            sender.sendMessage("§e▪ §7Baltop Rewards - Auto LuckPerms groups for rich players");
             sender.sendMessage("§e▪ §7Fake Players - Server list spoofing");
-            sender.sendMessage("§e▪ §7New Player Filter - Command blocking");
             sender.sendMessage("");
             sender.sendMessage("§6Quick Commands:");
             sender.sendMessage("§e/sizer §7- Change player sizes");
@@ -58,9 +54,6 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         switch (subCommand) {
             case "reload":
                 return handleReload(sender);
-
-            case "baltop":
-                return handleBaltop(sender);
 
             case "help":
                 return handleHelp(sender, args);
@@ -97,28 +90,6 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("§c§l✗ Error while reloading: " + e.getMessage());
             e.printStackTrace();
         }
-        return true;
-    }
-
-    private boolean handleBaltop(CommandSender sender) {
-        if (!sender.hasPermission("skittle.admin")) {
-            sender.sendMessage("§cYou don't have permission to use this command!");
-            return true;
-        }
-
-        BaltopRewardManager baltopManager = plugin.getBaltopRewardManager();
-
-        if (baltopManager == null) {
-            sender.sendMessage("§c§l✗ Baltop rewards system is not enabled!");
-            sender.sendMessage("§7Make sure Essentials and LuckPerms are installed.");
-            return true;
-        }
-
-        sender.sendMessage("§e⟳ Forcing baltop rewards update...");
-        baltopManager.forceUpdate();
-        sender.sendMessage("§a§l✓ Baltop rewards update started!");
-        sender.sendMessage("§7Check console for details.");
-
         return true;
     }
 
@@ -160,14 +131,9 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage("§7  Send a player to jail with bail");
                     sender.sendMessage("§e/unjailban <player>");
                     sender.sendMessage("§7  Release a player from jail");
-                    sender.sendMessage("§e/jaillist");
-                    sender.sendMessage("§7  View all jailed players");
-                    sender.sendMessage("§e/jailbal");
-                    sender.sendMessage("§7  Check your jail balance (as prisoner)");
-                    sender.sendMessage("§e/bail [confirm]");
-                    sender.sendMessage("§7  Bail yourself out of jail");
-                    sender.sendMessage("");
-                    sender.sendMessage("§7Spy Mode:");
+                    sender.sendMessage("§e/jaillist §7- View all jailed players");
+                    sender.sendMessage("§e/jailbal §7- Check your bail balance");
+                    sender.sendMessage("§e/bail confirm §7- Bail yourself out");
                     sender.sendMessage("§e/jailchatspy §7- See jail chat messages");
                     sender.sendMessage("");
                     sender.sendMessage("§7Permissions:");
@@ -219,26 +185,9 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
                     sender.sendMessage("§e- skittle.localchat.spy");
                     return true;
 
-                case "baltop":
-                case "rewards":
-                    sender.sendMessage("§6§l=== Baltop Rewards Help ===");
-                    sender.sendMessage("§7Automatic LuckPerms groups for top 3 richest players");
-                    sender.sendMessage("");
-                    sender.sendMessage("§7Admin Commands:");
-                    sender.sendMessage("§e/skittle baltop §7- Force manual update");
-                    return true;
-
-                case "newplayerfilter":
-                case "filter":
-                case "npf":
-                    sender.sendMessage("§6§l=== New Player Filter Help ===");
-                    sender.sendMessage("§7Command blocking for new players");
-                    sender.sendMessage("§7Shows 'No permission.' to new players");
-                    return true;
-
                 default:
                     sender.sendMessage("§cUnknown help topic: §e" + topic);
-                    sender.sendMessage("§7Available topics: §esizer, buildmode, jailban, jailvote, staffchat, localchat, baltop, newplayerfilter");
+                    sender.sendMessage("§7Available topics: §esizer, buildmode, jailban, jailvote, staffchat, localchat");
                     return true;
             }
         }
@@ -249,7 +198,6 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§6Admin Commands:");
         sender.sendMessage("§e/skittle §7- Plugin information");
         sender.sendMessage("§e/skittle reload §7- Reload configuration");
-        sender.sendMessage("§e/skittle baltop §7- Force baltop update");
         sender.sendMessage("");
         sender.sendMessage("§6Available Help Topics:");
         sender.sendMessage("§e/skittle help sizer §7- Player size system");
@@ -258,8 +206,6 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§e/skittle help jailvote §7- Community voting");
         sender.sendMessage("§e/skittle help staffchat §7- Private staff chat");
         sender.sendMessage("§e/skittle help localchat §7- Proximity chat");
-        sender.sendMessage("§e/skittle help baltop §7- Baltop rewards");
-        sender.sendMessage("§e/skittle help newplayerfilter §7- Command blocking");
         return true;
     }
 
@@ -267,18 +213,14 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         sender.sendMessage("§e§l    SkittleEssentials Info");
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        sender.sendMessage("§7Version: §e1.5.1");
+        sender.sendMessage("§7Version: §e1.5.2");
         sender.sendMessage("§7Author: §eTwotoz");
-        sender.sendMessage("§7API: §ePaper 1.20+");
+        sender.sendMessage("§7API: §ePaper 1.21+ / Folia 1.20.4+");
         sender.sendMessage("");
         sender.sendMessage("§7Features Status:");
 
         FakePlayersManager fakePlayersManager = plugin.getFakePlayersManager();
         boolean fakePlayersEnabled = fakePlayersManager != null && fakePlayersManager.isEnabled();
-        boolean baltopEnabled = plugin.getConfig().getBoolean("baltop-rewards.enabled", true);
-
-        NewPlayerFilter newPlayerFilter = plugin.getNewPlayerFilter();
-        boolean filterEnabled = newPlayerFilter != null && newPlayerFilter.isEnabled();
 
         sender.sendMessage((fakePlayersEnabled ? "§a✓" : "§c✗") + " §7Fake Players" +
                 (fakePlayersEnabled ? " §7(+" + fakePlayersManager.getFakePlayerCount() + ")" : ""));
@@ -288,16 +230,13 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage("§a✓ §7Jail Vote System");
         sender.sendMessage("§a✓ §7Staff Chat");
         sender.sendMessage("§a✓ §7Local Chat");
-        sender.sendMessage((baltopEnabled ? "§a✓" : "§c✗") + " §7Baltop Rewards");
-        sender.sendMessage((filterEnabled ? "§a✓" : "§c✗") + " §7New Player Filter" +
-                (filterEnabled ? " §7(" + newPlayerFilter.getPlaytimeThresholdHours() + "h threshold)" : ""));
 
         sender.sendMessage("§6§l━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         return true;
     }
 
     private boolean handleVersion(CommandSender sender) {
-        sender.sendMessage("§eSkittleEssentials §7v§61.5.1");
+        sender.sendMessage("§eSkittleEssentials §7v§61.5.2");
         sender.sendMessage("§7Running on §e" + plugin.getServer().getName() + " " + plugin.getServer().getVersion());
         return true;
     }
@@ -307,19 +246,19 @@ public class SkittleCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            List<String> subCommands = Arrays.asList("reload", "baltop", "help", "info", "version");
+            List<String> subCommands = Arrays.asList("reload", "help", "info", "version");
             return subCommands.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[0].toLowerCase()))
                     .filter(s -> {
                         // Filter admin commands
-                        if ((s.equals("reload") || s.equals("baltop")) && !sender.hasPermission("skittle.admin")) {
+                        if (s.equals("reload") && !sender.hasPermission("skittle.admin")) {
                             return false;
                         }
                         return true;
                     })
                     .collect(Collectors.toList());
         } else if (args.length == 2 && args[0].equalsIgnoreCase("help")) {
-            List<String> topics = Arrays.asList("sizer", "buildmode", "jailban", "jailvote", "staffchat", "localchat", "baltop", "newplayerfilter");
+            List<String> topics = Arrays.asList("sizer", "buildmode", "jailban", "jailvote", "staffchat", "localchat");
             return topics.stream()
                     .filter(s -> s.toLowerCase().startsWith(args[1].toLowerCase()))
                     .collect(Collectors.toList());
